@@ -27,7 +27,7 @@ folder = dirname[1].replace('x64','')
 
 python_exe = os.path.join(dirname[0],folder,'python.exe')
 
-modules = ['networkx','xlsxwriter','pandas']
+modules = ['networkx','xlsxwriter','pandas','ternary']
 
 for module in modules:    
     subprocess.check_call([python_exe,'-m', 'pip', 'install', module])
@@ -71,6 +71,7 @@ def main(python_exe):
         pip.main( ["install","networkx"] )
         pip.main( ["install","xlsxwriter"] )
         pip.main( ["install","pandas"] )
+        pip.main( ["install","ternary"] )
 
         print 'Finished'
     except Exception,e:
