@@ -37,10 +37,6 @@ def main(python_exe):
     files = ['Histogram.py','WeightedRoseDiagramPlots.py','LineFrequencyPlot.py','DistributionAnalysis.py','PlotTopology.py','TopologyParameters.py']
     try:
         dirname = os.path.split(os.path.dirname(os.path.realpath('__file__')))
-        if os.path.exists(tbx):
-            fname_in = os.path.join(dirname[0],'NetworkGT.tbx')
-            fname_out = os.path.join(tbx,'NetworkGT.tbx')
-            copyfile(fname_in,fname_out)
         
         for fname in files:
 
@@ -58,15 +54,6 @@ def main(python_exe):
                         
             copyfile(fname_out,fname_in)
             os.remove(fname_out)
-            
-        dirname = os.path.dirname(os.path.realpath('__file__'))
-        dname = os.path.join(dirname,'ternary')
-        f_output = os.path.join(os.path.dirname(python_exe),'Lib\\site-packages\\ternary')
-        
-        if not os.path.exists(f_output):
-            os.makedirs(f_output)
-
-        copy_tree(dname,f_output)
 
         pip.main( ["install","networkx"] )
         pip.main( ["install","xlsxwriter"] )
