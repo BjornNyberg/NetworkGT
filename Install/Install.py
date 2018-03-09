@@ -27,15 +27,19 @@ folder = dirname[1].replace('x64','')
 
 python_exe = os.path.join(dirname[0],folder,'python.exe')
 
-modules = ['networkx','xlsxwriter','pandas','ternary']
+modules = ['networkx','xlsxwriter','pandas','ternary','scipy']
 
 for module in modules:    
-    subprocess.check_call([python_exe,'-m', 'pip', 'install', module])
+    subprocess.check_call([python_exe,'-m', 'pip', 'install','--upgrade', module])
      
 def main(python_exe):
 
     files = ['Histogram.py','WeightedRoseDiagramPlots.py','LineFrequencyPlot.py','DistributionAnalysis.py','PlotTopology.py','TopologyParameters.py']
     try:
+        python_exe = sys.executable.replace('w','')
+        for module in modules:
+            subprocess.check_call([python_exe,'-m', 'pip', 'install','--upgrade', module])
+
         dirname = os.path.split(os.path.dirname(os.path.realpath('__file__')))
         
         for fname in files:
@@ -54,11 +58,6 @@ def main(python_exe):
                         
             copyfile(fname_out,fname_in)
             os.remove(fname_out)
-
-        pip.main( ["install","networkx"] )
-        pip.main( ["install","xlsxwriter"] )
-        pip.main( ["install","pandas"] )
-        pip.main( ["install","ternary"] )
 
         print 'Finished'
     except Exception,e:
