@@ -25,7 +25,7 @@ def main (infc,bins,field,grp):
     
     fname = os.path.join(os.path.dirname(os.path.realpath(__file__)),'WeightedRosePlotData.py')
     temp_csv = os.path.join(os.path.dirname(os.path.realpath(__file__)),'temp__wr.csv') 
-    python_executer = r"C:\Python27\ArcGISx6410.6\pythonw.exe"
+    python_executer = r"C:\Python27\ArcGISx6410.6\python.exe"
 	
     data = {}
 

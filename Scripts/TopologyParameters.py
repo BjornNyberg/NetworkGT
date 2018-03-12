@@ -46,7 +46,7 @@ def main (nodes,branch,infc3,output,output2,units):
         temp_csv3 = os.path.join(os.path.dirname(output2),'temp_csv3.csv') 
 	
 
-        python_executer = r"C:\Python27\ArcGISx6410.6\pythonw.exe"
+        python_executer = r"C:\Python27\ArcGISx6410.6\python.exe"
 
         curfields = curfields = [f.name for f in arcpy.ListFields(infc3)]
 

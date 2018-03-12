@@ -30,7 +30,7 @@ def main (shp):
 
     fname = os.path.join(os.path.dirname(os.path.realpath(__file__)),'plottopologydata.py')
     table = os.path.join(os.path.dirname(os.path.realpath(__file__)),'topology_table.xls')
-    python_executer = r"C:\Python27\ArcGISx6410.6\pythonw.exe"
+    python_executer = r"C:\Python27\ArcGISx6410.6\python.exe"
 
     arcpy.env.workspace = os.path.dirname(table)
 
