@@ -4,4 +4,8 @@ The NetworkGT (Network Geometry and Typology) Toolbox is a set of tools designed
 The toolbox is available as an extension for ArcGIS version 10.4 > under the GNU General Public License V3. Please refer to the User_Guide.pdf for
 installation and workflow.
 
-Current version - 0.1 (06.03.2018)
+Current version - v0.1 (13.03.2018)
+
+### Citation
+
+Nyberg, B., Nixon, C.W., Sanderson, D.J., 2018, NetworkGT: A GIS tool for geometric and topological analyses of two-dimensional fracture networks. Geosphere, v. 14, no. X, p.XXX-XXX, doi:10.1130/GES01595.1.
