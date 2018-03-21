@@ -27,7 +27,7 @@ folder = dirname[1].replace('x64','')
 
 python_exe = os.path.join(dirname[0],folder,'python.exe')
 
-modules = ['pip','scipy','pandas','networkx','xlsxwriter','ternary']
+modules = ['pip','python-ternary','scipy','pandas','networkx','xlsxwriter']
 
 for module in modules:    
     subprocess.check_call([python_exe,'-m', 'pip', 'install','--upgrade', module])
