@@ -61,7 +61,7 @@ def main(inFC,inFC2,inFC3,output):
         df3.columns = df3.columns.droplevel()
 
         branch_columns = ['C - C','C - I', 'C - U','I - I','I - U','U - U']
-        delete_columns = ['C - Error','Error - Error','Error - I']
+        delete_columns = ['C - Error','Error - Error','Error - I', 'Error - U']
 
         for column in branch_columns:
             if column not in df3:
