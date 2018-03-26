@@ -55,7 +55,7 @@ def main (infc,field,fields):
 	del cursor,row
 
     expression = [python_executer,fname,temp_csv]
-    expression = '%s %s %s' %(python_executer,fname,temp_csv)
+    #expression = '%s %s %s' %(python_executer,fname,temp_csv)
     DETACHED_PROCESS = 0x00000008
     P=subprocess.Popen(expression, shell=False, stdin=None, stdout=None, stderr=None, close_fds=True,creationflags=DETACHED_PROCESS)
     #os.system(expression)
