@@ -19,12 +19,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
 
-import  arcpy,math,os
-import numpy as np
+import  arcpy,os
 import networkx as nx
 
 def main (infc,sampling,mask,outfc,trim):
-
+	
     try:
 
 
@@ -110,9 +109,9 @@ def main (infc,sampling,mask,outfc,trim):
                     if ID in edges:
                         edges[ID].add_edge(pnts1,pnts2,weight=Length)
                     else:
-                        Graph = nx.Graph()
-                        Graph.add_edge(pnts1,pnts2,weight=Length)
-                        edges[ID] = Graph
+                        G = nx.Graph()
+                        G.add_edge(pnts1,pnts2,weight=Length)
+                        edges[ID] = G
 
                     if pnts1 not in points:
                         points.append(pnts1)
@@ -122,7 +121,7 @@ def main (infc,sampling,mask,outfc,trim):
                         points.append(pnts2)
                         cursor2.insertRow([pnts2])  
 
-	del cursor,cursor2,feature
+	del cursor,cursor2,feature,G
         
         arcpy.SpatialJoin_analysis ("in_memory\\point", infc, "in_memory\\sj","","KEEP_COMMON")
 
@@ -241,8 +240,6 @@ def main (infc,sampling,mask,outfc,trim):
             except Exception,e:
                 continue
 
-
-	        
 if __name__ == "__main__":        
     ###Inputs###
         
