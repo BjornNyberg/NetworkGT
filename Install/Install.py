@@ -27,10 +27,14 @@ folder = dirname[1].replace('x64','')
 
 python_exe = os.path.join(dirname[0],folder,'python.exe')
 
-modules = ['pip','python-ternary','scipy','pandas','networkx','xlsxwriter']
+modules = ['pip','python-ternary','scipy','pandas','networkx==1.8','xlsxwriter']
 
-for module in modules:    
-    subprocess.check_call([python_exe,'-m', 'pip', 'install','--upgrade', module])
+for module in modules:
+    try:
+        subprocess.check_call([python_exe,'-m', 'pip', 'install','--upgrade', module])
+    except Exception,e:
+        print e
+        continue
      
 def main(python_exe):
 
@@ -38,7 +42,11 @@ def main(python_exe):
     try:
         python_exe = sys.executable.replace('w','')
         for module in modules:
-            subprocess.check_call([python_exe,'-m', 'pip', 'install','--upgrade', module])
+            try:
+                subprocess.check_call([python_exe,'-m', 'pip', 'install','--upgrade', module])
+            except Exception,e:
+                print e
+                continue
 
         dirname = os.path.split(os.path.dirname(os.path.realpath('__file__')))
         
