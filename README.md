@@ -7,4 +7,4 @@ Current version - v0.1 (13.03.2018)
 
 ### Citation
 
-Nyberg, B., Nixon, C.W., Sanderson, D.J., 2018, NetworkGT: A GIS tool for geometric and topological analyses of two-dimensional fracture networks. Geosphere, v. 14, no. X, p.XXX-XXX, doi:10.1130/GES01595.1.
+Nyberg, B., Nixon, C.W., Sanderson, D.J., 2018, NetworkGT: A GIS tool for geometric and topological analyses of two-dimensional fracture networks. Geosphere, v. 14, no. 4, doi:10.1130/GES01595.1.
