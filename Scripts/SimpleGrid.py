@@ -31,7 +31,11 @@ def main (infc,Width,outfc,radius):
     extent = arcpy.Describe(infc).extent
     orig = "%s %s"%(extent.XMin,extent.YMin)
     add = extent.YMin*0.00001
-    yaxis = "%s %s"%(extent.XMin,extent.YMin+add)
+    
+    if extent.YMin < 0:
+        yaxis = "%s %s"%(extent.XMin,extent.YMin-add)
+    else:
+        yaxis = "%s %s"%(extent.XMin,extent.YMin+add)
     
     arcpy.CreateFishnet_management("in_memory\\fishnet",orig,yaxis, Width, Width, "", "", "" ,"", infc, "POLYGON")
 
