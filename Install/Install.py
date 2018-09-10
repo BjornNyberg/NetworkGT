@@ -27,7 +27,7 @@ folder = dirname[1].replace('x64','')
 
 python_exe = os.path.join(dirname[0],folder,'python.exe')
 
-modules = ['pip','python-ternary','scipy','pandas','networkx==1.8','xlsxwriter']
+modules = ['pip','python-ternary==1.0.4','scipy==1.0.1','pandas==0.23.3','networkx==1.8','xlsxwriter==1.0.4','numpy==1.14.2']
 
 for module in modules:
     try:
