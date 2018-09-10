@@ -19,7 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
 
-import  arcpy
+import  arcpy,sys
 
 def main (infc,Width,outfc,radius):
 
@@ -35,8 +35,8 @@ def main (infc,Width,outfc,radius):
     if extent.YMin < 0:
         yaxis = "%s %s"%(extent.XMin,extent.YMin-add)
     else:
-        yaxis = "%s %s"%(extent.XMin,extent.YMin+add)
-    
+        yaxis = "%s %s "%(extent.XMin,extent.YMin+add)
+
     arcpy.CreateFishnet_management("in_memory\\fishnet",orig,yaxis, Width, Width, "", "", "" ,"", infc, "POLYGON")
 
     arcpy.MakeFeatureLayer_management("in_memory\\fishnet", "in_memory\\layer")

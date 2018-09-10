@@ -23,7 +23,13 @@ import  os,arcpy
 def main (network,blocks,mask,units):
 
     try:
-        del_files = []
+	del_files = []
+	curfields = curfields = [f.name for f in arcpy.ListFields(mask)]
+        
+	if 'Sample_No_' not in curfields:
+            arcpy.AddError("Sample Area input is invalid - run Topology Parameters tool prior to Block Identifier tool")
+            sys.exit()
+
         arcpy.FeatureToPolygon_management([network], blocks, "","NO_ATTRIBUTES", "")
         
         arcpy.AddField_management(blocks, 'Area', 'DOUBLE')
@@ -38,8 +44,7 @@ def main (network,blocks,mask,units):
                 cursor.updateRow(row)    
 
         cursorm = [m_data for m_data in arcpy.da.SearchCursor(blocks,['SHAPE@'])]
-
-        curfields = curfields = [f.name for f in arcpy.ListFields(mask)]
+ 
 
         names = [('Min_Block','Min Block Size'),('Mean_Block','Mean Block Size'),('Max_Block','Max Block Size'),('Sum_Block','Sum Block Size'),('C_Blocks','No. Blocks'),('I_Blocks','No. Intersected Blocks')]
         
