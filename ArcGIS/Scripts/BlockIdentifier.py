@@ -25,7 +25,7 @@ def main (network,blocks,mask,units):
     try:
 	del_files = []
 	curfields = curfields = [f.name for f in arcpy.ListFields(mask)]
-        
+       
 	if 'Sample_No_' not in curfields:
             arcpy.AddError("Sample Area input is invalid - run Topology Parameters tool prior to Block Identifier tool")
             sys.exit()
