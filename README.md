@@ -6,7 +6,7 @@ The toolbox is available as an extension for ArcGIS version 10.4 > and QGIS 3.4 
 Current version - v0.1 (13.03.2018)
 
 
-<img src="Images/Graphical_Abstract.png">
+<img src="Images/Graphical_Abstract.png" width="600" height="350">
 
 ### Citation
 
