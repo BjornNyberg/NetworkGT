@@ -17,9 +17,9 @@ import pandas as pd
 import networkx as nx
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsPointXY, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
-from qgis.utils import iface
+from qgis.PyQt.QtGui import QIcon
 
-class Line_Frequency(QgsProcessingAlgorithm):
+class LineFrequency(QgsProcessingAlgorithm):
 
     LG = 'Line Grid'
     Network = 'Fracture Network'
@@ -39,21 +39,25 @@ class Line_Frequency(QgsProcessingAlgorithm):
         return self.tr("Line Frequency")
  
     def group(self):
-        return self.tr("NetworkGT")
+        return self.tr("Geometry")
     
     def shortHelpString(self):
         return self.tr("Create a Line Frequency sampling method")
 
     def groupId(self):
-        return "Topology"
+        return "Geometry"
     
     def helpUrl(self):
-        return "https://github.com/BjornNyberg/NetworkGT"
+        return "https://github.com/BjornNyberg/NetworkGT/blob/master/QGIS/README.pdf"
     
     def createInstance(self):
         return type(self)()
+
+    def icon(self):
+        pluginPath = os.path.join(os.path.dirname(__file__),'icons')
+        return QIcon( os.path.join( pluginPath, 'LF.jpg') )
     
-    def initAlgorithm(self, config=None):
+    def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.LG,
             self.tr("Line Grid"),
@@ -93,7 +97,7 @@ class Line_Frequency(QgsProcessingAlgorithm):
         (writer, dest_id) = self.parameterAsSink(parameters, self.LFD, context,
                                             fs, QgsWkbTypes.LineString, Network.sourceCrs())
         sources,edges,Lengths,k = {},{},{},{}
-        for feature in LG.getFeatures(QgsFeatureRequest()):
+        for feature in LG.getFeatures():
             geom = feature.geometry()
             if QgsWkbTypes.isSingleType(geom.wkbType()):
                 geom = geom.asPolyline()
@@ -107,7 +111,7 @@ class Line_Frequency(QgsProcessingAlgorithm):
         parameters = {'INPUT':infc,'LINES':infc2,'OUTPUT':'memory:'}  
         templines = st.run('native:splitwithlines',parameters,context=context,feedback=feedback)   
         
-        for feature in templines['OUTPUT'].getFeatures(QgsFeatureRequest()):
+        for feature in templines['OUTPUT'].getFeatures():
             geom = feature.geometry()
             if QgsWkbTypes.isSingleType(geom.wkbType()):
                 geom = geom.asPolyline()
@@ -129,7 +133,7 @@ class Line_Frequency(QgsProcessingAlgorithm):
                 edges[ID] = G
         
         fet = QgsFeature() 
-        for feature in templines['OUTPUT'].getFeatures(QgsFeatureRequest()):
+        for feature in templines['OUTPUT'].getFeatures():
             geom = feature.geometry()
             if QgsWkbTypes.isSingleType(geom.wkbType()):
                 geom = geom.asPolyline()
@@ -161,6 +165,7 @@ class Line_Frequency(QgsProcessingAlgorithm):
                 fet.setGeometry(feature.geometry())
                 fet.setAttributes([ID,c,L])
                 writer.addFeature(fet,QgsFeatureSink.FastInsert)    
+                
         del sources,edges,Lengths,k
 
         return {self.LFD:dest_id}

@@ -16,8 +16,9 @@ import processing as st
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (edit,QgsField, QgsFeature, QgsPointXY, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.utils import iface
+from qgis.PyQt.QtGui import QIcon
 
-class Simple_Grid(QgsProcessingAlgorithm):
+class ContourGrid(QgsProcessingAlgorithm):
 
     IB = 'Interpretation Boundary'
     Width='Spacing'
@@ -37,21 +38,25 @@ class Simple_Grid(QgsProcessingAlgorithm):
         return self.tr("Contour Grid")
  
     def group(self):
-        return self.tr("NetworkGT")
+        return self.tr("Network Sampling")
     
     def shortHelpString(self):
         return self.tr("Create a contour grid sampling method")
 
     def groupId(self):
-        return "Topology"
+        return "Network Sampling"
     
     def helpUrl(self):
-        return "https://github.com/BjornNyberg/NetworkGT"
+        return "https://github.com/BjornNyberg/NetworkGT/blob/master/QGIS/README.pdf"
     
     def createInstance(self):
         return type(self)()
+
+    def icon(self):
+        pluginPath = os.path.join(os.path.dirname(__file__),'icons')
+        return QIcon( os.path.join( pluginPath, 'CG.jpg') )
     
-    def initAlgorithm(self, config=None):
+    def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.IB,
             self.tr("Interpretation Boundary"),
@@ -72,9 +77,6 @@ class Simple_Grid(QgsProcessingAlgorithm):
             QgsProcessing.TypeVectorPolygon))
     
     def processAlgorithm(self, parameters, context, feedback):
-        
-        def no_post_process(alg, context, feedback):
-            pass
             
         IB = self.parameterAsSource(parameters, self.IB, context)
         
@@ -96,11 +98,11 @@ class Simple_Grid(QgsProcessingAlgorithm):
         
         feedback.pushInfo(QCoreApplication.translate('TempFiles','Creating Grid'))
         parameters = {'TYPE':2,'EXTENT':infc,'HSPACING':spacing,'VSPACING':spacing,'HOVERLAY':0,'VOVERLAY': 0, 'CRS': infc, 'OUTPUT':'memory:'}  
-        grid = st.run('qgis:creategrid',parameters,context=context,feedback=feedback)#, onFinish=no_post_process)   
+        grid = st.run('qgis:creategrid',parameters,context=context,feedback=feedback)
 
-        cursorm = [feature.geometry() for feature in IB.getFeatures(QgsFeatureRequest())]
+        cursorm = [feature.geometry() for feature in IB.getFeatures()]
         fet = QgsFeature() 
-        for feature in grid['OUTPUT'].getFeatures(QgsFeatureRequest()):
+        for feature in grid['OUTPUT'].getFeatures():
             geom = feature.geometry()
             for m in cursorm:
                 if geom.within(m):

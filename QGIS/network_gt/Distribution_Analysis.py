@@ -1,4 +1,4 @@
-import math
+import math,os
 import numpy as np
 import pandas as pd
 import processing as st
@@ -10,7 +10,7 @@ from qgis.core import (edit,QgsField, QgsFeature, QgsPointXY,QgsProcessingParame
 QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource,QgsWkbTypes,QgsFeatureSink,
 QgsProcessingParameterNumber,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer,QgsProcessingParameterFeatureSink,QgsProcessingParameterField)
 
-from qgis.utils import iface
+from qgis.PyQt.QtGui import QIcon
 
 class DistributionAnalysis(QgsProcessingAlgorithm):
 
@@ -22,7 +22,7 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
         super().__init__()
         
     def name(self):
-        return "Distribution AnalysisV2"
+        return "Distribution Analysis"
 
     def tr(self, text):
         return QCoreApplication.translate("Distribution Analysis", text)
@@ -31,21 +31,25 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
         return self.tr("Distribution Analysis")
  
     def group(self):
-        return self.tr("NetworkGT")
+        return self.tr("Geometry")
     
     def shortHelpString(self):
         return self.tr("Distribution analysis of a fracture network")
 
     def groupId(self):
-        return "Topology"
+        return "Geometry"
     
     def helpUrl(self):
-        return "https://github.com/BjornNyberg/NetworkGT"
+        return "https://github.com/BjornNyberg/NetworkGT/blob/master/QGIS/README.pdf"
     
     def createInstance(self):
         return type(self)()
+
+    def icon(self):
+        pluginPath = os.path.join(os.path.dirname(__file__),'icons')
+        return QIcon( os.path.join( pluginPath, 'DA.jpg') )
     
-    def initAlgorithm(self, config=None):
+    def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.Network,
             self.tr("Fracture Network"),
@@ -55,7 +59,7 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
             self.tr("Distribution Analysis"),
             QgsProcessing.TypeVectorLine))
         self.addParameter(QgsProcessingParameterField(self.Length,
-                                self.tr('Weight Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Any))
+            self.tr('Weight Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric))
 
     def processAlgorithm(self, parameters, context, feedback):
             
@@ -73,7 +77,7 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
         fc_count = Network.featureCount()
         total = 100.0/float(fc_count)
         feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','Reading Fracture Lines'))
-        for feature in Network.getFeatures(QgsFeatureRequest()):
+        for feature in Network.getFeatures():
             SN.append(feature.id())
             LEN.append(feature[group])
         
@@ -97,7 +101,7 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
         
         feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','Creating Data'))
         fet = QgsFeature()
-        for enum,feature in enumerate(Network.getFeatures(QgsFeatureRequest())):
+        for enum,feature in enumerate(Network.getFeatures()):
             feedback.setProgress(int(enum*total))  
             if feature.id() in samples:
                 data = df.ix[feature.id()]

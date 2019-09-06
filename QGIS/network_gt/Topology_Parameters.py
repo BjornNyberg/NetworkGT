@@ -16,6 +16,7 @@ import pandas as pd
 import processing as st
 
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.PyQt.QtGui import QIcon
 
 from qgis.core import (edit,QgsField, QgsFeature, QgsPointXY,QgsProcessingParameterBoolean, QgsProcessingParameterNumber,
 QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource,QgsWkbTypes,QgsFeatureSink,
@@ -51,12 +52,16 @@ class TopologyParameters(QgsProcessingAlgorithm):
         return "Topology"
     
     def helpUrl(self):
-        return "https://github.com/BjornNyberg/NetworkGT"
+        return "https://github.com/BjornNyberg/NetworkGT/blob/master/QGIS/README.pdf"
     
     def createInstance(self):
         return type(self)()
+
+    def icon(self):
+        pluginPath = os.path.join(os.path.dirname(__file__),'icons')
+        return QIcon( os.path.join( pluginPath, 'TP.jpg') )
     
-    def initAlgorithm(self, config=None):
+    def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.Nodes,
             self.tr("Nodes"),
@@ -67,7 +72,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
             [QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.Sample_Area,
-            self.tr("SampleArea"),
+            self.tr("Sample Area"),
             [QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.TP,
@@ -86,7 +91,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
         SN = []
         CLASS = []
         
-        for feature in Nodes.getFeatures(QgsFeatureRequest()):
+        for feature in Nodes.getFeatures():
             SN.append(feature['Sample_No_'])
             CLASS.append(feature['Class'])
                       
@@ -119,7 +124,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
         CON = []
         LEN = []
                       
-        for feature in Branches.getFeatures(QgsFeatureRequest()):
+        for feature in Branches.getFeatures():
             SN.append(feature['Sample_No_'])
             B.append(feature['Weight'])
             CON.append(feature['Connection'])
@@ -166,7 +171,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
         AREA = []
         fet = QgsFeature() 
         
-        for feature in SA.getFeatures(QgsFeatureRequest()):
+        for feature in SA.getFeatures():
             SN.append(feature['Sample_No_'])
             if check == -1:
                 CIRC.append(feature.geometry().length())
@@ -230,7 +235,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
             
         feedback.pushInfo(QCoreApplication.translate('TopologyParametersOutput','Creating Output'))
         
-        for feature in SA.getFeatures(QgsFeatureRequest()):
+        for feature in SA.getFeatures():
             if feature['Sample_No_'] in samples:
                 fet.setGeometry(feature.geometry())
                 fet.setAttributes(df.ix[feature['Sample_No_']].tolist())

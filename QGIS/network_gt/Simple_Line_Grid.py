@@ -16,8 +16,9 @@ import processing as st
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsPointXY, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.utils import iface
+from qgis.PyQt.QtGui import QIcon
 
-class Simple_Grid(QgsProcessingAlgorithm):
+class LineGrid(QgsProcessingAlgorithm):
 
     IB = 'Interpretation Boundary'
     Width='Spacing'
@@ -37,21 +38,25 @@ class Simple_Grid(QgsProcessingAlgorithm):
         return self.tr("Line Grid")
  
     def group(self):
-        return self.tr("NetworkGT")
+        return self.tr("Network Sampling")
     
     def shortHelpString(self):
         return self.tr("Create a line grid sampling method")
 
     def groupId(self):
-        return "Topology"
+        return "Network Sampling"
     
     def helpUrl(self):
-        return "https://github.com/BjornNyberg/NetworkGT"
+        return "https://github.com/BjornNyberg/NetworkGT/blob/master/QGIS/README.pdf"
     
     def createInstance(self):
         return type(self)()
     
-    def initAlgorithm(self, config=None):
+    def icon(self):
+        pluginPath = os.path.join(os.path.dirname(__file__),'icons')
+        return QIcon( os.path.join( pluginPath, 'LG.jpg') )
+    
+    def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.IB,
             self.tr("Interpretation Boundary"),
@@ -78,9 +83,9 @@ class Simple_Grid(QgsProcessingAlgorithm):
         infc = parameters[self.IB]
         spacing = parameters[self.Width]
         rotation = parameters[self.Rotation]
-        iface.mapCanvas().refresh()
-        extent = iface.mapCanvas().extent()
-        center = iface.mapCanvas().center()
+        canvas = iface.mapCanvas()
+        extent = canvas.extent()
+        center = canvas.center()
         
         if rotation < 0 or rotation > 180:        
             feedback.reportError(QCoreApplication.translate('Input Error','Rotation value must be within the range of 0 and 180'))
@@ -94,7 +99,7 @@ class Simple_Grid(QgsProcessingAlgorithm):
                                             
 
         
-        feedback.pushInfo(QCoreApplication.translate('TempFiles','Creating Line Grid %s'%(extent)))
+        feedback.pushInfo(QCoreApplication.translate('TempFiles','Creating Line Grid'))
         parameters = {'TYPE':1,'EXTENT':extent,'HSPACING':spacing,'VSPACING':spacing,'HOVERLAY':0,'VOVERLAY': 0, 'CRS': infc, 'OUTPUT':'memory:'}  
         grid = st.run('qgis:creategrid',parameters,context=context,feedback=feedback)
         
@@ -109,7 +114,7 @@ class Simple_Grid(QgsProcessingAlgorithm):
         
         fet = QgsFeature() 
         count = 0
-        for feature in tempsp['OUTPUT'].getFeatures(QgsFeatureRequest()):
+        for feature in tempsp['OUTPUT'].getFeatures():
             geom = feature.geometry().asPolyline()
             start,end = geom[0],geom[-1]
             startx,starty=start

@@ -15,11 +15,12 @@ import os, sys
 import processing as st
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsPointXY, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty)
+from qgis.PyQt.QtGui import QIcon
 
-class Branches_Nodes(QgsProcessingAlgorithm):
+class BranchesNodes(QgsProcessingAlgorithm):
 
     Network='Network'
-    Sample_Area='Sample_Area'
+    Sample_Area='Sample Area'
     IB = 'Interpretation Boundary'
     Branches='Branches'
     Nodes='Nodes'
@@ -37,7 +38,7 @@ class Branches_Nodes(QgsProcessingAlgorithm):
         return self.tr("Branches and Nodes")
  
     def group(self):
-        return self.tr("NetworkGT")
+        return self.tr("Topology")
     
     def shortHelpString(self):
         return self.tr("Create branches and nodes of a fracture network")
@@ -46,12 +47,16 @@ class Branches_Nodes(QgsProcessingAlgorithm):
         return "Topology"
     
     def helpUrl(self):
-        return "https://github.com/BjornNyberg/NetworkGT"
+        return "https://github.com/BjornNyberg/NetworkGT/blob/master/QGIS/README.pdf"
     
     def createInstance(self):
         return type(self)()
+
+    def icon(self):
+        pluginPath = os.path.join(os.path.dirname(__file__),'icons')
+        return QIcon( os.path.join( pluginPath, 'BN.jpg') )
     
-    def initAlgorithm(self, config=None):
+    def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.Network,
             self.tr("Network"),
