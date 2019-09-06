@@ -10,7 +10,7 @@ version=0.1
 author=Bjorn Nyberg
 email=bjorn.nyberg@uib.no
 
-about=
+about=Sample and analyze the geometry and topology of fracture networks.
 
 tracker=https://github.com/BjornNyberg/NetworkGT/issues
 repository=https://github.com/BjornNyberg/NetworkGT/tree/master/QGIS/network_gt
