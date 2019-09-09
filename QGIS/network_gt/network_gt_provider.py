@@ -34,13 +34,13 @@ import os
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-from .branches_nodes import BranchesNodes
-from .simple_grid import ContourGrid
-from .simple_line_grid import LineGrid
-from .topology_parameters import TopologyParameters
-from .line_frequency import LineFrequency
-from .distribution_analysis import DistributionAnalysis
-from .sets import Sets
+from .Branches_Nodes import BranchesNodes
+from .Simple_Grid import ContourGrid
+from .Simple_Line_Grid import LineGrid
+from .Topology_Parameters import TopologyParameters
+from .Line_Frequency import LineFrequency
+from .Distribution_Analysis import DistributionAnalysis
+from .Sets import Sets
 from .rose_diagrams import RoseDiagrams
 
 class NetworkGTProvider(QgsProcessingProvider):
