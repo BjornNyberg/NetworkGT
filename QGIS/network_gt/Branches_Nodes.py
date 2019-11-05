@@ -68,7 +68,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.IB,
             self.tr("Interpretation Boundary"),
-            [QgsProcessing.TypeVectorPolygon]))
+            [QgsProcessing.TypeVectorPolygon], optional=True))
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.Branches,
             self.tr("Branches"),
@@ -85,9 +85,16 @@ class BranchesNodes(QgsProcessingAlgorithm):
         
         field_check = Sample_Area.fields().indexFromName('Sample_No_')
             
-        if field_check == -1:            
-            feedback.reportError(QCoreApplication.translate('Input Error','Add "Sample_No_" attribute field to Sample Area input file'))
-            return {}
+        if field_check == -1:
+            editLayer = self.parameterAsLayer(parameters, self.Sample_Area, context)
+            pr = editLayer.dataProvider()   
+            pr.addAttributes([QgsField('Sample_No_', QVariant.Int)])
+            editLayer.updateFields()
+            f_len = len(editLayer.fields()) - 1
+            editLayer.startEditing()                             
+            for feature in editLayer.getFeatures():
+                pr.changeAttributeValues({feature.id():{f_len:feature.id()}})
+            editLayer.commitChanges() 
         
         infc = parameters[self.Network]
         infc2 = parameters[self.IB]
@@ -110,13 +117,18 @@ class BranchesNodes(QgsProcessingAlgorithm):
                                            fields2, QgsWkbTypes.Point, layer.sourceCrs())
         
         feedback.pushInfo(QCoreApplication.translate('TempFiles','Creating Temporary Files'))
-        parameters = {'INPUT':infc2,'OUTPUT':'memory:'}  
-        tempmask = st.run('qgis:polygonstolines',parameters,context=context,feedback=feedback)                   
+        if infc2:
+            parameters = {'INPUT':infc2,'OUTPUT':'memory:'}  
+            tempmask = st.run('qgis:polygonstolines',parameters,context=context,feedback=feedback)                   
+            
+            parameters = {'INPUT':infc,'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}   
+            tempint = st.run('native:intersection',parameters,context=context,feedback=feedback)
+            cursorm = [feature.geometry() for feature in tempmask['OUTPUT'].getFeatures(QgsFeatureRequest())]
+            parameters = {'INPUT':tempint['OUTPUT'],'OUTPUT':'memory:'}  
+        else:
+            parameters = {'INPUT':infc,'OUTPUT':'memory:'}  
+            cursorm = []
         
-        parameters = {'INPUT':infc,'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}   
-        tempint = st.run('native:intersection',parameters,context=context,feedback=feedback)    
-        
-        parameters = {'INPUT':tempint['OUTPUT'],'OUTPUT':'memory:'}  
         tempsp = st.run("native:multiparttosingleparts",parameters,context=context,feedback=feedback)
         
         parameters = {'INPUT':tempsp['OUTPUT'],'LINES':tempsp['OUTPUT'],'OUTPUT':'memory:'}  
@@ -129,9 +141,9 @@ class BranchesNodes(QgsProcessingAlgorithm):
             centroids = st.run('native:centroids',parameters,context=context,feedback=feedback) 
             
             parameters = {'INPUT':centroids['OUTPUT'],'DISTANCE':QgsProperty.fromField('Radius'), 'SEGMENTS': 5, 'END_CAP_STYLE':0,'JOIN_STYLE':0,'MITER_LIMIT':2,'DISSOLVE':False,'OUTPUT':'memory:'}
-            buffer = st.run('native:buffer',parameters,context=context,feedback=feedback)
+            buff = st.run('native:buffer',parameters,context=context,feedback=feedback)
             
-            parameters = {'INPUT':buffer['OUTPUT'],'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}   
+            parameters = {'INPUT':buff['OUTPUT'],'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}   
             samplemask = st.run('native:intersection',parameters,context=context,feedback=feedback)   
             
             Sample_Area = samplemask['OUTPUT']            
@@ -141,7 +153,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
         Graph = {} #Store all node connections
         
         feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Node Information'))
-        cursorm = [feature.geometry() for feature in tempmask['OUTPUT'].getFeatures(QgsFeatureRequest())]
+
         features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
         total = 0
         for feature in features:
@@ -156,25 +168,34 @@ class BranchesNodes(QgsProcessingAlgorithm):
                     if b in Graph: #node count
                         Graph[b] += 1
                     else:
-                        Graph[b] = 1    
-                for m in cursorm:
-                    geom = feature.geometry().intersection(m)
-                    if QgsWkbTypes.isSingleType(geom.wkbType()):
-                        x,y = geom.asPoint()
-                        unknown_nodes.append((round(x,8),round(y,8)))   
-                    else:
-                        for x,y in geom.asMultiPoint(): #Check for multipart polyline
-                            unknown_nodes.append((round(x,8),round(y,8)))       
-
+                        Graph[b] = 1
             except Exception as e:
                 feedback.reportError(QCoreApplication.translate('Interpretation Boundary','%s'%(e)))
-                
+
+        if infc2:
+            feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Unknown Nodes'))
+            features = layer.getFeatures(QgsFeatureRequest())
+            for feature in features:
+                try:  
+                    for m in cursorm:
+                        geom = feature.geometry().intersection(m)
+                        if geom.wkbType() != 7:
+                            if QgsWkbTypes.isSingleType(geom.wkbType()):
+                                x,y = geom.asPoint()
+                                unknown_nodes.append((round(x,8),round(y,8)))   
+                            else:
+                                for x,y in geom.asMultiPoint(): #Check for multipart polyline
+                                    unknown_nodes.append((round(x,8),round(y,8)))       
+                            feedback.pushInfo(QCoreApplication.translate('BranchesNodes','test'))
+                except Exception as e:
+                    feedback.reportError(QCoreApplication.translate('Interpretation Boundary','%s'%(geom.wkbType())))
+                    
         total = 100.0/total
         cursorm = [(feature.geometry(),feature['Sample_No_']) for feature in Sample_Area.getFeatures(QgsFeatureRequest())]
         fet = QgsFeature(fields) 
         fet2 = QgsFeature(fields)
-        features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
         
+        features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
         feedback.pushInfo(QCoreApplication.translate('BranchesNodes','Creating Branches and Nodes'))
         for enum,feature in enumerate(features):
             try:    

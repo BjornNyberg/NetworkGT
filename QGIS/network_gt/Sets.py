@@ -77,7 +77,7 @@ class Sets(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
             
-        Network = self.parameterAsSource(parameters, self.Network, context)
+        layer = self.parameterAsLayer(parameters, self.Network, context)
         bin_v =  parameters[self.Bin_V]
         if bin_v > 0:
             x = np.arange(0,180,bin_v)
@@ -87,17 +87,21 @@ class Sets(QgsProcessingAlgorithm):
         else:
             bins = list(eval(self.parameterAsString(parameters, self.Sets, context)))
 
-        fs = QgsFields()
-        f_name = ['Set','Orient','Bin_Mean','Length']    
-        for f in f_name:        
-            fs.append(QgsField(f, QVariant.Double))
+        pr = layer.dataProvider()
+        new_fields = ['Set','Orient','Bin_Mean','Length']    
+        for field in new_fields:
+            if layer.fields().indexFromName(field) == -1:            
+                pr.addAttributes([QgsField(field, QVariant.Double)])
 
-        (writer, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               fs, QgsWkbTypes.LineString, Network.sourceCrs())
-                                               
-        fet = QgsFeature()                                       
-        for feature in Network.getFeatures():
-            geom = feature.geometry().asPolyline()
+        layer.updateFields()
+        f_len = len(layer.fields())
+        layer.startEditing()                             
+        for feature in layer.getFeatures():
+            geom = feature.geometry()
+            if QgsWkbTypes.isSingleType(geom.wkbType()):
+                geom = feature.geometry().asPolyline()
+            else:
+                geom = feature.geometry().asMultiPolyline()[0]
             start,end = geom[0],geom[-1]
             startx,starty=start
             endx,endy=end
@@ -124,11 +128,9 @@ class Sets(QgsProcessingAlgorithm):
                     mean = (float(b[0]) + float(b[1]))/2.0
                     break
             
-            rows = [Value,Bearing,mean,feature.geometry().length()]
+            rows = {f_len-4:Value,f_len-3:Bearing,f_len-2:mean,f_len-1:feature.geometry().length()}
 
-            fet.setGeometry(feature.geometry())
-            fet.setAttributes(rows)
-            writer.addFeature(fet,QgsFeatureSink.FastInsert)      
-            
+            pr.changeAttributeValues({feature.id():rows}) 
+        layer.commitChanges() 
         
         return {}

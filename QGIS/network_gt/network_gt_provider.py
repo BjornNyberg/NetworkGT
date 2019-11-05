@@ -42,6 +42,10 @@ from .Line_Frequency import LineFrequency
 from .Distribution_Analysis import DistributionAnalysis
 from .Sets import Sets
 from .rose_diagrams import RoseDiagrams
+from .TB import TBlocks
+from .BI import IBlocks
+from .Clusters import Clusters
+from .Repair import RepairTool
 
 class NetworkGTProvider(QgsProcessingProvider):
 
@@ -71,6 +75,10 @@ class NetworkGTProvider(QgsProcessingProvider):
         self.addAlgorithm(ContourGrid())
         self.addAlgorithm(Sets())
         self.addAlgorithm(RoseDiagrams())
+        self.addAlgorithm(TBlocks())
+        self.addAlgorithm(IBlocks())
+        self.addAlgorithm(Clusters())
+        self.addAlgorithm(RepairTool())
    
     def id(self):
         """

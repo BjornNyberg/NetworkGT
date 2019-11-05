@@ -2,7 +2,7 @@ import math,os
 import numpy as np
 import pandas as pd
 import processing as st
-from scipy.stats import norm,lognorm,mstats
+from scipy.stats import norm,lognorm,mstats,kurtosis,skew
 
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 
@@ -98,18 +98,28 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
         df['LNSD'] = (np.log(lognorm(mean,scale=np.exp(std)).ppf(df['Cum_Freq']/100.00000000001))-mean)/std
             
         samples = df.index.tolist()
-        
+
         feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','Creating Data'))
         fet = QgsFeature()
         for enum,feature in enumerate(Network.getFeatures()):
             feedback.setProgress(int(enum*total))  
             if feature.id() in samples:
-                data = df.ix[feature.id()]
-                rows = []
+                data = df.iloc[feature.id()]
+                rows = []   
                 for f in f_name:
                     rows.append(float(data[f]))
                 fet.setGeometry(feature.geometry())
                 fet.setAttributes(rows)
-                writer.addFeature(fet,QgsFeatureSink.FastInsert)              
+                writer.addFeature(fet,QgsFeatureSink.FastInsert)
 
+
+        info = df['LEN'].describe()
+        labels = ['geom mean','CoV','skewness','kurtosis']
+        vals = [gmean*100.000000001,np.std(df['LEN'])/np.mean(df['LEN']),skew(df['LEN']),kurtosis(df['LEN'])]
+        feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','%s'%(info)))
+
+        for l,v in zip(labels,vals):
+            feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','%s %s'%(l,v)))
+            
+        
         return {self.DA:dest_id}

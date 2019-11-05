@@ -74,7 +74,7 @@ class LineGrid(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.Grid,
             self.tr("Line Grid"),
-            QgsProcessing.TypeVectorPolygon))
+            QgsProcessing.TypeVectorLine))
     
     def processAlgorithm(self, parameters, context, feedback):
         
