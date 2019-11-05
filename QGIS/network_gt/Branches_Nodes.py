@@ -186,7 +186,6 @@ class BranchesNodes(QgsProcessingAlgorithm):
                             else:
                                 for x,y in geom.asMultiPoint(): #Check for multipart polyline
                                     unknown_nodes.append((round(x,8),round(y,8)))       
-                            feedback.pushInfo(QCoreApplication.translate('BranchesNodes','test'))
                 except Exception as e:
                     feedback.reportError(QCoreApplication.translate('Interpretation Boundary','%s'%(geom.wkbType())))
                     
