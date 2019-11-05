@@ -91,7 +91,6 @@ class RepairTool(QgsProcessingAlgorithm):
 
         if T == True and E == True:
             feedback.pushInfo(QCoreApplication.translate('Repair Error','***NOTE*** - Algorithm will not trim extended lines'))
-            feedback.pushInfo(QCoreApplication.translate('Repair Error','Rerun the repair tool on the extended fracture lines with the Trim option selected'))
 
         diss = st.run("native:dissolve", {'INPUT':infc,'FIELD':[],'OUTPUT':'memory:'})
         
