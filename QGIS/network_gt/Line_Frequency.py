@@ -15,8 +15,10 @@ import os, sys, math
 import processing as st
 import pandas as pd
 import networkx as nx
-import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objs as go
+import plotly.plotly as py
+import plotly
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsPointXY,QgsSpatialIndex, QgsProcessingParameterFolderDestination, QgsProcessingParameterField, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
@@ -29,7 +31,6 @@ class LineFrequency(QgsProcessingAlgorithm):
     LFD='Line Frequency Data'
     Weight = 'Weight Field'
     Group = "Groupby Field"
-    outDir = "Output Folder"
     
     def __init__(self):
         super().__init__()
@@ -75,12 +76,6 @@ class LineFrequency(QgsProcessingAlgorithm):
                                 self.tr('Weight Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric, optional=True))
         self.addParameter(QgsProcessingParameterField(self.Group,
                                 self.tr('Group Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Any, optional=True))
-        self.addParameter(QgsProcessingParameterFeatureSink(
-            self.LFD,
-            self.tr("Line Frequency Data"),
-            QgsProcessing.TypeVectorLine))
-        self.addParameter(QgsProcessingParameterFolderDestination(self.outDir,
-                self.tr('Directory Destination'), optional=True))
     
     def processAlgorithm(self, parameters, context, feedback):
         
@@ -99,8 +94,7 @@ class LineFrequency(QgsProcessingAlgorithm):
             for feature in editLayer.getFeatures():
                 pr.changeAttributeValues({feature.id():{f_len:feature.id()}})
             editLayer.commitChanges()
-            
-        outDir = parameters[self.outDir]
+
         wF = parameters[self.Weight]
         gF = parameters[self.Group]
 
@@ -109,26 +103,6 @@ class LineFrequency(QgsProcessingAlgorithm):
         
         infc = parameters[self.LG]
         infc2 = parameters[self.Network]
-        
-        field_check = LG.fields().indexFromName('Sample_No_')
-            
-        if field_check == -1:            
-            feedback.reportError(QCoreApplication.translate('Input Error','Add "Sample_No_" attribute field to Line Grid input file'))
-            return {}
-            
-        fs = QgsFields()
-        skip = ['Sample_No_','Count','Distance']
-        fields = Network.fields()
-        for field in fields:
-            if field.name() not in skip:
-                fs.append( QgsField(field.name() ,field.type() ))
-                
-        fs.append(QgsField('Sample_No_', QVariant.Int))
-        fs.append(QgsField('Count', QVariant.Int))
-        fs.append(QgsField('Distance', QVariant.Double))  
-        
-        (writer, dest_id) = self.parameterAsSink(parameters, self.LFD, context,
-                                            fs, QgsWkbTypes.LineString, Network.sourceCrs())
                                             
         sources,edges,Lengths,k = {},{},{},{}
         for feature in LG.getFeatures():
@@ -168,7 +142,6 @@ class LineFrequency(QgsProcessingAlgorithm):
         
         fet = QgsFeature() 
         SN, SS, D, W = [],[],[],[]
-        output = os.path.exists(outDir)
         for feature in templines['OUTPUT'].getFeatures():
             geom = feature.geometry()
             if QgsWkbTypes.isSingleType(geom.wkbType()):
@@ -183,192 +156,227 @@ class LineFrequency(QgsProcessingAlgorithm):
             endx, endy = (round(endx,6),round(endy,6))  
             
             ID = feature['Sample_No_']
-
+            
             if ID not in Lengths:
                 G = edges[ID]
                 if len(G.nodes()) > 2:
                     source = sources[ID]
                     length,path = nx.single_source_dijkstra(G,source,weight='weight')
                     Lengths[ID] = length
-                    k[ID] = list(length.keys())
-            c, L = -1,-1
+                    
             if ID in Lengths:
-                try:
-                    c = k[ID].index((endx,endy))
-                    L = Lengths[ID][(endx,endy)]
-                except Exception as e:
-                    pass
-                featFIDs = index.nearestNeighbor(QgsPointXY(endx,endy), 1)    
-                
-                d = 1e10
-                for FID in featFIDs:
-                    feature2 = orig_data[FID]
-                    testGeom = QgsGeometry.fromPointXY(QgsPointXY(endx,endy))
-                    dist = QgsGeometry.distance(testGeom,feature2.geometry())
+                L = Lengths[ID][(endx,endy)]
+                L2 = Lengths[ID][(startx,starty)]
+                if L2 > L:
+                    L = L2
+                    endx,endy = startx,starty
+                if gF != None or wF != None:
+                    featFIDs = index.nearestNeighbor(QgsPointXY(endx,endy), 2)    
+                    d = 1e10
+                    for FID in featFIDs:
+                        feature2 = orig_data[FID]
+                        testGeom = QgsGeometry.fromPointXY(QgsPointXY(endx,endy))
+                        dist = QgsGeometry.distance(testGeom,feature2.geometry())
 
-                    if dist < d:
-                        rows = []
-                        for field in fields:
-                            if field.name() not in skip:
-                                rows.append(feature2[field.name()])
-                            if field.name() == wF:
-                                wFv = feature2[field.name()]
-                            elif field.name() == gF:
-                                gFv = feature2[field.name()]
-                        d = dist
-                            
-                rows.extend([ID,c,L])        
-                fet.setGeometry(feature.geometry())
-                
-                fet.setAttributes(rows)
-                if output:
-                    SN.append(ID)
-                    D.append(L)
-                    if gF:
-                        SS.append(str(gFv))
-                    else:
-                        SS.append('Total')
-                    if wF:
-                        W.append(float(wFv))
-                    else:
-                        W.append(float(c))
+                        if dist < d:
+                            if wF:
+                                wFv = feature2[wF]
+                            if gF:
+                                gFv = feature2[gF]
+                            d = dist
 
-                writer.addFeature(fet,QgsFeatureSink.FastInsert)    
+                SN.append(ID)
+                D.append(L)
+                if gF:
+                    SS.append(str(gFv))
+                else:
+                    SS.append('Total')
+                if wF:
+                    W.append(float(wFv))
+                else:
+                    W.append(1)
+
      
         del sources,edges,Lengths,k
-        if output:
-            try:
-                feedback.pushInfo(QCoreApplication.translate('TempFiles','Creating Output Files to %s'%(outDir)))
-                data = pd.DataFrame({0:SN, 1:SS, 2:D, 3:W})
-                data.dropna(inplace=True)
-                #fig = plt.figure()
-                columns = list(data.columns.values)
-                outValues = {}
-                for n,df in data.groupby(0):
 
-                    if len(df) > 1:
+        data = pd.DataFrame({0:SN, 1:SS, 2:D, 3:W})
+        data.dropna(inplace=True)
 
-                        #ax = fig.add_subplot(1,1,1)
-                        data = {}
-                        vf_values = {}
-             
-                        max_dist = max(df[2])
+        columns = list(data.columns.values)
+        
+        for n,df in data.groupby(0):
+            final = []
+            if len(df) > 1:
 
+                #ax = fig.add_subplot(1,1,1)
+                data = {}
+                vf_values = {}
+     
+                max_dist = max(df[2])
+
+                x,y,c = [0],[0],0.0
+                values = df.sort_values(2)
+
+                prev = 0
+                for x_value,disp in zip(values[2],values[3]):
+                    y.append(y[-1])
+                    c += disp
+                    y.append(c)
+                    x.extend([x_value,x_value])
+                    spacing = [x_value - prev]
+                    prev = x_value
+                        
+                    if 'Total' not in data:
+                        data['Total'] = spacing
+                    else:
+                        spacing_data = data['Total']                            
+                        spacing += spacing_data
+                        data['Total'] = spacing
+
+                m = float(max(y)/max_dist)
+
+                for x_v,y_v in zip(x,y):
+                    test_y = x_v*m
+                    vf = [y_v/float(y[-1]) - test_y/y[-1]]
+                    if 'Total' in vf_values:
+                        vf_data = vf_values['Total']
+                        vf_data += vf
+                        vf_values['Total'] = vf_data
+                    else:
+                        vf_values['Total'] = vf
+                        
+                x.append(max_dist)
+                y.append(y[-1])
+
+                traces = [go.Scatter(
+                                    x = x,
+                                    y = y,
+                                    mode = 'lines',
+                                    name = 'Total',
+                                    xaxis='x1',
+                                    yaxis='y1'
+                                )]
+                
+                for n2,g in df.groupby(1):
+                    if n2 != 'Total':
                         x,y,c = [0],[0],0.0
-                        values = df.sort_values(2)
-
+                        values = g.sort_values(2)
+                        
                         prev = 0
                         for x_value,disp in zip(values[2],values[3]):
+
                             y.append(y[-1])
                             c += disp
                             y.append(c)
                             x.extend([x_value,x_value])
                             spacing = [x_value - prev]
                             prev = x_value
+                            
+                            if n2 not in data:
+                                data[n2] = spacing
                                 
-                            if 'Total' not in data:
-                                data['Total'] = spacing
                             else:
-                                spacing_data = data['Total']                            
+                                spacing_data = data[n2]                            
                                 spacing += spacing_data
-                                data['Total'] = spacing
-
+                                data[n2] = spacing
+                                
                         m = float(max(y)/max_dist)
-
                         for x_v,y_v in zip(x,y):
                             test_y = x_v*m
-                            vf = [y_v/float(y[-1]) - test_y/y[-1]]
-                            if 'Total' in vf_values:
-                                vf_data = vf_values['Total']
+                            vf = [y_v/float(y[-1]) - test_y/float(y[-1])]
+
+                            if n2 in vf_values:
+                                vf_data = vf_values[n2]
                                 vf_data += vf
-                                vf_values['Total'] = vf_data
+                                vf_values[n2] = vf_data
                             else:
-                                vf_values['Total'] = vf
-                                
-                        x.append(max_dist)
-                        y.append(y[-1])
-                        #ax.plot(x,y,label='Total')
-                        
-                        for n2,g in df.groupby(1):
-                            if n2 != 'Total':
-                                x,y,c = [0],[0],0.0
-                                values = g.sort_values(2)
-                                
-                                prev = 0
-                                for x_value,disp in zip(values[2],values[3]):
+                                vf_values[n2] = vf
 
-                                    y.append(y[-1])
-                                    c += disp
-                                    y.append(c)
-                                    x.extend([x_value,x_value])
-                                    spacing = [x_value - prev]
-                                    prev = x_value
-                                    
-                                    if n2 not in data:
-                                        data[n2] = spacing
-                                        
-                                    else:
-                                        spacing_data = data[n2]                            
-                                        spacing += spacing_data
-                                        data[n2] = spacing
-                                        
-                                m = float(max(y)/max_dist)
-                                for x_v,y_v in zip(x,y):
-                                    test_y = x_v*m
-                                    vf = [y_v/float(y[-1]) - test_y/float(y[-1])]
-
-                                    if n2 in vf_values:
-                                        vf_data = vf_values[n2]
-                                        vf_data += vf
-                                        vf_values[n2] = vf_data
-                                    else:
-                                        vf_values[n2] = vf
-                                #ax.plot(x,y,label='%s'%(n2))        
-                                
-                        #ylim = max(y)+max(y)*0.1        
-                        #ax.set_xlim([0,max_dist+max_dist*0.01])
-                        #ax.set_ylim([0,ylim])
-                        #ax.set_title('Cumulative Frequency')
-                        #ax.set_xlabel('Distance')
-                        #ax.set_ylabel('Frequency')
-                        #ax.legend(loc=2,title='Legend',fancybox=True,fontsize=8)
-
-                        #output = r'D:\Temp\%s.svg'%(n)
-                        #fig.savefig(output)
-                        #plt.clf()
-                        data = OrderedDict(sorted(data.items()))
+                        traces.append(go.Scatter(
+                                    x = x,
+                                    y = y,
+                                    mode = 'lines',
+                                    name = n2,
+                                    xaxis='x1',
+                                    yaxis='y1'
+                                ))
                         
-                        for k,v in data.items():
-                            if k not in outValues:
-                                table_vals = [[],[],[],[],[],[],[],[],[],[],[],[],[]]
-                            else:
-                                table_vals = outValues[k]
-                            table_vals[0].append(n)
-                            table_vals[1].append(len(v))
-                            table_vals[2].append(round(np.mean(v),2))
-                            table_vals[3].append(round(np.std(v),2))
-                            table_vals[4].append(round(min(v),2))
-                            table_vals[5].append(round(np.percentile(v, 25),2))
-                            table_vals[6].append(round(np.percentile(v, 50),2))
-                            table_vals[7].append(round(np.percentile(v, 75),2))                  
-                            table_vals[8].append(round(max(v),2))
-                            table_vals[9].append(round(np.std(v)/np.mean(v),2))
-                            outValues[k] = table_vals
-                            
-                        for k,vf in vf_values.items():
-                            table_vals = outValues[k]
-                            table_vals[10].append(round(max(vf),2))
-                            table_vals[11].append(round(min(vf),2))
-                            table_vals[12].append(round(math.fabs(max(vf))+ math.fabs(min(vf)),2))
-                            outValues[k] = table_vals
-                        
-                row_labels = ['Sample_No_','Count','mean','std','min','25%','50%','75%','Max','CoV',r'D+',r'D-','Vf']
-                for k,v in outValues.items():
-                    output=r'D:\Temp\%s.csv'%(k)
-                    outdf = pd.DataFrame(dict(zip(row_labels,table_vals)))
-                    outdf.to_csv(output)
+                data = OrderedDict(sorted(data.items()))
+                table_vals = [[],[],[],[],[],[],[],[],[],[],[],[],[]]
+                
+                for k,v in data.items():
+                    table_vals[0].append(str(k))
+                    table_vals[1].append(len(v))
+                    table_vals[2].append(round(np.mean(v),2))
+                    table_vals[3].append(round(np.std(v),2))
+                    table_vals[4].append(round(min(v),2))
+                    table_vals[5].append(round(np.percentile(v, 25),2))
+                    table_vals[6].append(round(np.percentile(v, 50),2))
+                    table_vals[7].append(round(np.percentile(v, 75),2))                  
+                    table_vals[8].append(round(max(v),2))
+                    table_vals[9].append(round(np.std(v)/np.mean(v),2))
                     
-            except Exception as e:
-                feedback.pushInfo(QCoreApplication.translate('TempFiles','%s'%(e)))
+                for k,vf in vf_values.items():
+                    #table_vals = outValues[k]
+                    table_vals[10].append(round(max(vf),2))
+                    table_vals[11].append(round(min(vf),2))
+                    table_vals[12].append(round(math.fabs(max(vf))+ math.fabs(min(vf)),2))
 
-        return {self.LFD:dest_id}
+            col_labels = ['Sample No','Count','mean','std','min','25%','50%','75%','Max','CoV',r'D+',r'D-','Vf']
+            cols = [['<b>%s</b>'%(col)]for col in col_labels]
+
+            axis=dict(
+                showline=True,
+                zeroline=False,
+                showgrid=True,
+                mirror=True,
+                ticklen=2,
+                gridcolor='#ffffff',
+                tickfont=dict(size=10)
+            )
+            
+            traces.append(go.Table(
+                domain=dict(x=[0.0, 1.0],
+                            y=[0.0, 0.2]),
+                columnwidth = [1, 2, 2, 2],
+                columnorder=np.arange(0,13,1),
+                header = dict(height = 25,
+                              values = cols,
+                              line = dict(color='rgb(50, 50, 50)'),
+                              align = ['left'] * 10,
+                              font = dict(color=['rgb(45, 45, 45)'] * 5, size=14),
+                              fill = dict(color='#d562be')),
+                
+                cells = dict(values = table_vals,
+                             line = dict(color='#506784'),
+                             align = ['left'] * 10,
+                             font = dict(color=['rgb(40, 40, 40)'] * 5, size=12),
+                             format = [None]+[".2f"]*12,
+                             height = 50,
+                             fill = dict(color=['rgb(235, 193, 238)', 'rgba(228, 222, 249, 0.65)']))))
+
+            layout= go.Layout(
+                title= 'Line Frequency Plot',
+                margin = dict(t=100),
+                xaxis1= dict(
+                    axis,
+                    title= 'Distance',
+                    ticklen= 5,
+                    gridwidth= 2,
+                    **dict(domain=[0, 1], anchor='y1')#, showticklabels=False)
+                ),
+                yaxis1=dict(
+                    axis,
+                    title= 'Frequency',
+                    ticklen= 5,
+                    gridwidth= 2,
+                    **dict(domain=[0.3, 1], anchor='x1')#, showticklabels=False)
+                ),
+                
+                showlegend= True
+            )
+                    
+            fig = dict(data=traces, layout=layout)       
+            plotly.offline.plot(fig,filename=str(n))
+
+        return {}

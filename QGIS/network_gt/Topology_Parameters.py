@@ -15,7 +15,6 @@ import os, sys, numpy
 import pandas as pd
 import processing as st
 import warnings
-
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 
 from qgis.core import (edit,QgsField, QgsFeature, QgsPointXY,QgsProcessingParameterBoolean, QgsProcessingParameterNumber,
@@ -172,7 +171,6 @@ class TopologyParameters(QgsProcessingAlgorithm):
         SN = []
         CIRC = []
         AREA = []
-        fet = QgsFeature() 
         
         for feature in SA.getFeatures(QgsFeatureRequest()):
             SN.append(feature['Sample_No_'])
@@ -238,13 +236,13 @@ class TopologyParameters(QgsProcessingAlgorithm):
             layer.updateFields() 
             
         feedback.pushInfo(QCoreApplication.translate('TopologyParametersOutput','Creating Output'))
-        
+        fet = QgsFeature() 
         for feature in SA.getFeatures(QgsFeatureRequest()):
             if feature['Sample_No_'] in samples:
                 fet.setGeometry(feature.geometry())
                 rows = [feature['Sample_No_']]
                 rows.extend(df.ix[feature['Sample_No_']].tolist())
                 fet.setAttributes(rows)
-                writer.addFeature(fet,QgsFeatureSink.FastInsert)  
+                writer.addFeature(fet,QgsFeatureSink.FastInsert)
 
         return {self.TP:dest_id}

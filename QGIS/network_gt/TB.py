@@ -37,13 +37,13 @@ class TBlocks(QgsProcessingAlgorithm):
         return self.tr("Theoretical Blocks")
  
     def group(self):
-        return self.tr("Geometry")
+        return self.tr("Topology")
     
     def shortHelpString(self):
         return self.tr("Define Theoretical Blocks of a Fracture Network")
 
     def groupId(self):
-        return "Geometry"
+        return "Topology"
     
     def helpUrl(self):
         return "https://github.com/BjornNyberg/NetworkGT/blob/master/QGIS/README.pdf"

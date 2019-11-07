@@ -90,7 +90,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
             pr = editLayer.dataProvider()   
             pr.addAttributes([QgsField('Sample_No_', QVariant.Int)])
             editLayer.updateFields()
-            f_len = len(editLayer.fields()) - 1
+            f_len = editLayer.fields().indexFromName('Sample_No_')
             editLayer.startEditing()                             
             for feature in editLayer.getFeatures():
                 pr.changeAttributeValues({feature.id():{f_len:feature.id()}})
@@ -105,6 +105,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
         fields.append(QgsField("Connection", QVariant.String))
         fields.append(QgsField("Weight", QVariant.Double))
         fields.append(QgsField("Sample_No_", QVariant.Int))
+        fields.append(QgsField("Length", QVariant.Double))
 
         (writer, dest_id) = self.parameterAsSink(parameters, self.Branches, context,
                                                fields, QgsWkbTypes.LineString, layer.sourceCrs())
@@ -178,8 +179,8 @@ class BranchesNodes(QgsProcessingAlgorithm):
             for feature in features:
                 try:  
                     for m in cursorm:
-                        geom = feature.geometry().intersection(m)
-                        if geom.wkbType() != 7:
+                        if feature.geometry().intersects(m):
+                            geom = feature.geometry().intersection(m)
                             if QgsWkbTypes.isSingleType(geom.wkbType()):
                                 x,y = geom.asPoint()
                                 unknown_nodes.append((round(x,8),round(y,8)))   
@@ -265,7 +266,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                                 fet2.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
                                 fet2.setAttributes(data2)
                                 writer2.addFeature(fet2,QgsFeatureSink.FastInsert)     
-                        data = [Class,Connection,weight,m[1]]
+                        data = [Class,Connection,weight,m[1],feature.geometry().length()]
                         fet.setGeometry(feature.geometry())
                         fet.setAttributes(data)
                         writer.addFeature(fet,QgsFeatureSink.FastInsert)    
@@ -321,7 +322,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                                     if V == 'E' or V == 'U':
                                         weight -= 0.5
                                 
-                                data = [Class,Connection,weight,m[1]]  
+                                data = [Class,Connection,weight,m[1],feature.geometry().length()]  
                                 fet.setGeometry(inter)
                                 fet.setAttributes(data)
                                 writer.addFeature(fet,QgsFeatureSink.FastInsert)          

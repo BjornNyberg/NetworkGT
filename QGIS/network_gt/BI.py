@@ -37,13 +37,13 @@ class IBlocks(QgsProcessingAlgorithm):
         return self.tr("Identify Blocks")
  
     def group(self):
-        return self.tr("Geometry")
+        return self.tr("Topology")
     
     def shortHelpString(self):
         return self.tr("Define Clusters of a Fracture Network")
 
     def groupId(self):
-        return "Geometry"
+        return "Topology"
     
     def helpUrl(self):
         return "https://github.com/BjornNyberg/NetworkGT/blob/master/QGIS/README.pdf"
@@ -64,50 +64,76 @@ class IBlocks(QgsProcessingAlgorithm):
             self.Samples,
             self.tr("Samples"),
             [QgsProcessing.TypeVectorPolygon]))
+        self.addParameter(QgsProcessingParameterFeatureSink(
+            self.Blocks,
+            self.tr("Identified Blocks"),
+            QgsProcessing.TypeVectorPolygon))
     
     def processAlgorithm(self, parameters, context, feedback):
-        try:   
-            layer = self.parameterAsLayer(parameters, self.Samples, context)
-            Network = self.parameterAsLayer(parameters, self.Network, context)
+        layer = self.parameterAsLayer(parameters, self.Samples, context)
+        Network = self.parameterAsLayer(parameters, self.Network, context)
 
-            pr = layer.dataProvider()
-            new_fields = ['MinB','MeanB','MaxB','SumB','NoB','NoIB']
-            for field in new_fields:
-                if layer.fields().indexFromName(field) == -1:            
-                    pr.addAttributes([QgsField(field, QVariant.Double)])
-            layer.updateFields() 
-            R = layer.fields().indexFromName('Radius')
-            params = {'INPUT':Network,'KEEP_FIELDS':False,'OUTPUT':'memory:'}
-            
-            bs = st.run("qgis:polygonize",params)
-            
-            features = bs['OUTPUT'].getFeatures()
+        fs = QgsFields()
+        fs.append(QgsField('FID', QVariant.Int))
+        fs.append(QgsField('Area', QVariant.Double))
+        
+        (writer, dest_id) = self.parameterAsSink(parameters, self.Blocks, context,
+                                            fs, QgsWkbTypes.Polygon, layer.sourceCrs())
+        
+        pr = layer.dataProvider()
+        new_fields = ['MinB','MeanB','MaxB','SumB','NoB','NoIB']
+        for field in new_fields:
+            if layer.fields().indexFromName(field) == -1:            
+                pr.addAttributes([QgsField(field, QVariant.Double)])
+                
+        layer.updateFields()
+        
+        R = layer.fields().indexFromName('Radius')
+        
+        params = {'INPUT':Network,'KEEP_FIELDS':False,'OUTPUT':'memory:'}
+        
+        bs = st.run("qgis:polygonize",params)
+        
+        features = bs['OUTPUT'].getFeatures()
 
-            cursorm = [feature.geometry() for feature in features]
-            total = 100.0/layer.featureCount()
-            feedback.pushInfo(QCoreApplication.translate('Blocks','Calculating Blocks'))
-            f_len = len(layer.fields())
-            layer.startEditing()
-            for enum,feature in enumerate(layer.getFeatures()):
-                if total > 0:
-                    feedback.setProgress(int(enum*total))
-                data, count = [], 0 
-                for m in cursorm:
-                    if R > -1:
-                        Radius = feature['Radius']
-                        geom = feature.geometry().centroid().buffer(float(Radius),5)
-                    else:
-                        geom = feature.geometry()
-                    if geom.intersects(m): #Block intersects sample area
-                        if m.within(geom):
-                            count += 1
-                        intersect = geom.intersection(m)
-                        data.append(intersect.area())
-                if data:
-                    pr.changeAttributeValues({feature.id():{f_len-6:float(np.min(data)),f_len-5:float(np.mean(data)),f_len-4:float(np.max(data)),f_len-3:float(sum(data)),f_len-2:float(len(data)),f_len-1:float(len(data)-count)}})
-            layer.commitChanges() 
-        except Exception as e:
-            feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
-            return {}
-        return {}
+        idxs = []
+        for field in new_fields:
+            idxs.append(layer.fields().indexFromName(field))
+            
+        cursorm = []
+        
+        fet = QgsFeature() 
+        feedback.pushInfo(QCoreApplication.translate('Blocks','Defining Blocks'))
+        for feature in features:
+            geom = feature.geometry()                
+            cursorm.append(geom)
+            fet.setGeometry(geom)
+            rows = [feature.id(),geom.area()]
+            fet.setAttributes(rows)
+            writer.addFeature(fet,QgsFeatureSink.FastInsert)
+            
+        total = 100.0/layer.featureCount()
+        feedback.pushInfo(QCoreApplication.translate('Blocks','Calculating Statistics'))
+
+        layer.startEditing()
+        for enum,feature in enumerate(layer.getFeatures()):
+            if total > 0:
+                feedback.setProgress(int(enum*total))
+            data, count = [], 0 
+            for m in cursorm:
+                if R > -1:
+                    Radius = feature['Radius']
+                    geom = feature.geometry().centroid().buffer(float(Radius),5)
+                else:
+                    geom = feature.geometry()
+                if geom.intersects(m): #Block intersects sample area
+                    if m.within(geom):
+                        count += 1
+                    intersect = geom.intersection(m)
+                    data.append(intersect.area())
+            if data:
+                pr.changeAttributeValues({feature.id():{idxs[0]:float(np.min(data)),idxs[1]:float(np.mean(data)),idxs[2]:float(np.max(data)),idxs[3]:float(sum(data)),idxs[4]:float(len(data)),idxs[5]:float(len(data)-count)}})
+        layer.commitChanges() 
+
+        return {self.Blocks:dest_id}
                 

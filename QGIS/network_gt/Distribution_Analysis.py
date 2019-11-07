@@ -4,6 +4,10 @@ import pandas as pd
 import processing as st
 from scipy.stats import norm,lognorm,mstats,kurtosis,skew
 
+import plotly.graph_objs as go
+import plotly.plotly as py
+import plotly
+
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 
 from qgis.core import (edit,QgsField, QgsFeature, QgsPointXY,QgsProcessingParameterBoolean, QgsProcessingParameterNumber,
@@ -15,8 +19,7 @@ from qgis.PyQt.QtGui import QIcon
 class DistributionAnalysis(QgsProcessingAlgorithm):
 
     Network = 'Network'
-    DA = 'Distribution Analysis'
-    Length = 'Length'
+    Length = 'Weight'
     
     def __init__(self):
         super().__init__()
@@ -54,32 +57,26 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
             self.Network,
             self.tr("Fracture Network"),
             [QgsProcessing.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterFeatureSink(
-            self.DA,
-            self.tr("Distribution Analysis"),
-            QgsProcessing.TypeVectorLine))
         self.addParameter(QgsProcessingParameterField(self.Length,
-            self.tr('Weight Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric))
+            self.tr('Weight Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric,optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
             
         Network = self.parameterAsSource(parameters, self.Network, context)   
         group = self.parameterAsString(parameters, self.Length, context)
         
-        fs = QgsFields()
-        f_name = ['LEN','Cum_Freq','NSD','LNSD']
-        for f in f_name:        
-            fs.append(QgsField(f, QVariant.Double))
-        (writer, dest_id) = self.parameterAsSink(parameters, self.DA, context,
-                                               fs, QgsWkbTypes.LineString, Network.sourceCrs())
+     
         SN = []
         LEN = []
         fc_count = Network.featureCount()
         total = 100.0/float(fc_count)
-        feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','Reading Fracture Lines'))
+
         for feature in Network.getFeatures():
             SN.append(feature.id())
-            LEN.append(feature[group])
+            if group:
+                LEN.append(feature[group])
+            else:
+                LEN.append(feature.geometry().length())
         
         df = pd.DataFrame({'Sample No.':SN, 'LEN':LEN})
         df.set_index('Sample No.')
@@ -87,7 +84,8 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
         df_idx = np.arange(1,len(df)+1)
         
         df['Cum_Freq'] = df_idx/float(len(df))*100.0
-        
+        df['CF_NL'] = np.log(df['Cum_Freq'])
+        df['LEN_NL'] = np.log(df['LEN'])
         gmean = mstats.gmean(df['LEN'])/100.000000001
         std = df['LEN'].std()/100.000000001
         df['NSD']=norm.ppf(df['Cum_Freq']/100.00000000001,loc=gmean,scale=std)/std
@@ -99,27 +97,33 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
             
         samples = df.index.tolist()
 
-        feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','Creating Data'))
-        fet = QgsFeature()
-        for enum,feature in enumerate(Network.getFeatures()):
-            feedback.setProgress(int(enum*total))  
-            if feature.id() in samples:
-                data = df.iloc[feature.id()]
-                rows = []   
-                for f in f_name:
-                    rows.append(float(data[f]))
-                fet.setGeometry(feature.geometry())
-                fet.setAttributes(rows)
-                writer.addFeature(fet,QgsFeatureSink.FastInsert)
-
-
         info = df['LEN'].describe()
         labels = ['geom mean','CoV','skewness','kurtosis']
         vals = [gmean*100.000000001,np.std(df['LEN'])/np.mean(df['LEN']),skew(df['LEN']),kurtosis(df['LEN'])]
-        feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','%s'%(info)))
 
+        feedback.pushInfo(QCoreApplication.translate('Distribution Analysis',' Summary Statistics'))
+        for k,v in info.items():
+            feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','%s %s'%(k,v)))
         for l,v in zip(labels,vals):
             feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','%s %s'%(l,v)))
-            
+
+        trace1 = go.Scatter(x=df['LEN'], y=df['Cum_Freq'])
+        trace2 = go.Scatter(x=df['LEN'], y=df['CF_NL'])
+        trace3 = go.Scatter(x=df['LEN_NL'], y=df['CF_NL'])
+        trace4 = go.Scatter(x=df['LEN'], y=df['NSD'])
+        trace5 = go.Scatter(x=df['LEN_NL'], y=df['NSD'])
+                            
+
+        fig = plotly.tools.make_subplots(rows=2, cols=3, specs=[[{}, {},{}],
+           [{},{}, None]],subplot_titles=('Cumulative Frequency', '-ve expotential',
+                                                          'Power-law', 'Normal SD','Log Normal SD'))
+
+        fig.append_trace(trace1, 1, 1)
+        fig.append_trace(trace2, 1, 2)
+        fig.append_trace(trace3, 1, 3)
+        fig.append_trace(trace4, 2, 1)
+        fig.append_trace(trace5, 2, 2)
+
+        plotly.offline.plot(fig)
         
-        return {self.DA:dest_id}
+        return {}

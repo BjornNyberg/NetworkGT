@@ -70,10 +70,6 @@ class Sets(QgsProcessingAlgorithm):
             self.tr("Set Definitions By Bin Size"),
             QgsProcessingParameterNumber.Double,
             0.0))
-        self.addParameter(QgsProcessingParameterFeatureSink(
-            self.OUTPUT,
-            self.tr("Set Output"),
-            QgsProcessing.TypeVectorLine))
 
     def processAlgorithm(self, parameters, context, feedback):
             
@@ -88,13 +84,16 @@ class Sets(QgsProcessingAlgorithm):
             bins = list(eval(self.parameterAsString(parameters, self.Sets, context)))
 
         pr = layer.dataProvider()
-        new_fields = ['Set','Orient','Bin_Mean','Length']    
+        new_fields = ['Set','Orient','Length']    
         for field in new_fields:
             if layer.fields().indexFromName(field) == -1:            
                 pr.addAttributes([QgsField(field, QVariant.Double)])
 
         layer.updateFields()
-        f_len = len(layer.fields())
+        idxs = []
+        for field in new_fields:
+            idxs.append(layer.fields().indexFromName(field))
+        
         layer.startEditing()                             
         for feature in layer.getFeatures():
             geom = feature.geometry()
@@ -113,22 +112,18 @@ class Sets(QgsProcessingAlgorithm):
             Bearing = (90.0 - angle) % 360
             if Bearing >= 180:
                 Bearing -= 180
-
+                
             Value = -1
             for enum, b in enumerate(bins):
                 if float(b[0]) > float(b[1]):
                     if Bearing >= float(b[0]) or Bearing <= float(b[1]):
                         Value = enum
-                        mean = (float(b[0]) - float(180)) + b[1]
-                        if mean < 0:
-                            mean += 180
                         break
                 elif Bearing >= float(b[0]) and Bearing <= float(b[1]):
                     Value = enum 
-                    mean = (float(b[0]) + float(b[1]))/2.0
                     break
-            
-            rows = {f_len-4:Value,f_len-3:Bearing,f_len-2:mean,f_len-1:feature.geometry().length()}
+                
+            rows = {idxs[0]:Value,idxs[1]:Bearing,idxs[2]:feature.geometry().length()}
 
             pr.changeAttributeValues({feature.id():rows}) 
         layer.commitChanges() 

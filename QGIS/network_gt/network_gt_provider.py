@@ -46,6 +46,7 @@ from .TB import TBlocks
 from .BI import IBlocks
 from .Clusters import Clusters
 from .Repair import RepairTool
+from .Histogram import Histogram
 
 class NetworkGTProvider(QgsProcessingProvider):
 
@@ -79,6 +80,7 @@ class NetworkGTProvider(QgsProcessingProvider):
         self.addAlgorithm(IBlocks())
         self.addAlgorithm(Clusters())
         self.addAlgorithm(RepairTool())
+        self.addAlgorithm(Histogram())
    
     def id(self):
         """
