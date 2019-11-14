@@ -13,8 +13,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
     
 import os, sys,math
 import processing as st
+import networkx as nx
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField,QgsVectorFileWriter,QgsProcessingParameterBoolean, QgsFeature, QgsPointXY,QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry,QgsSpatialIndex, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty)
+from qgis.core import (QgsField,QgsVectorFileWriter,QgsVectorLayer,QgsMultiLineString,QgsProcessingParameterField,QgsProcessingParameterBoolean, QgsFeature, QgsPointXY,QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry,QgsSpatialIndex, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty)
 from qgis.PyQt.QtGui import QIcon
 
 class RepairTool(QgsProcessingAlgorithm):
@@ -61,6 +62,7 @@ class RepairTool(QgsProcessingAlgorithm):
             self.Network,
             self.tr("Network"),
             [QgsProcessing.TypeVectorLine]))
+
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.Repaired,
             self.tr("Repaired"),
@@ -69,32 +71,36 @@ class RepairTool(QgsProcessingAlgorithm):
             self.Distance,
             self.tr("Distance to Extend/Trim"),
             QgsProcessingParameterNumber.Double,
-            10.0))
+            0.5))
         self.addParameter(QgsProcessingParameterBoolean(self.Trim,
-                    self.tr("Trim"),False))
+                    self.tr("Trim"),True))
         self.addParameter(QgsProcessingParameterBoolean(self.Extend,
                     self.tr("Extend"),True))
     
     def processAlgorithm(self, parameters, context, feedback):
         
-        layer = self.parameterAsSource(parameters, self.Network, context)
+        layer = self.parameterAsLayer(parameters, self.Network, context)
         T = parameters[self.Trim]
         E = parameters[self.Extend]
-        fields = QgsFields()
-        fields.append(QgsField("ID", QVariant.Int))
+
+        P = 10 #Precision
+        pr = layer.dataProvider()
         
-        (writer, dest_id) = self.parameterAsSink(parameters, self.Repaired, context,
-                                               fields, QgsWkbTypes.LineString, layer.sourceCrs())
+        if layer.fields().indexFromName('Fault No') == -1:
+            pr.addAttributes([QgsField('Fault No', QVariant.Double)])
+            layer.updateFields()
+
+        f_len = layer.fields().indexFromName('Fault No')
+        layer.startEditing()                             
+        for feature in layer.getFeatures():
+            pr.changeAttributeValues({feature.id():{f_len:feature.id()}})
+        layer.commitChanges() 
         
         infc = parameters[self.Network]
         distance = parameters[self.Distance]
-
-        if T == True and E == True:
-            feedback.pushInfo(QCoreApplication.translate('Repair Error','***NOTE*** - Algorithm will not trim extended lines'))
-
-        diss = st.run("native:dissolve", {'INPUT':infc,'FIELD':[],'OUTPUT':'memory:'})
-        
-        params = {'INPUT':diss['OUTPUT'],'LINES':diss['OUTPUT'],'OUTPUT':'memory:'}  
+        params = {'INPUT':infc,'OUTPUT':'memory:'}  
+        mpsp = st.run("native:multiparttosingleparts",params,context=context,feedback=feedback) 
+        params = {'INPUT':mpsp['OUTPUT'],'LINES':mpsp['OUTPUT'],'OUTPUT':'memory:'}  
         templines = st.run('native:splitwithlines',params,context=context,feedback=feedback)             
         
         Graph = {} #Store all node connections
@@ -103,16 +109,23 @@ class RepairTool(QgsProcessingAlgorithm):
         features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
         
         index = QgsSpatialIndex(templines['OUTPUT'].getFeatures())
-        data = {feature.id():feature.geometry() for feature in templines['OUTPUT'].getFeatures()}
+        data = {feature.id():feature for feature in templines['OUTPUT'].getFeatures()}
         total = 0
+        
+        fields = QgsFields()
+        for field in layer.fields():
+            fields.append(QgsField(field.name(),field.type()))
+
+        (writer, dest_id) = self.parameterAsSink(parameters, self.Repaired, context,
+                                               fields, QgsWkbTypes.MultiLineString, layer.sourceCrs())
+        
         for feature in features:
             try:      
-                total += 1
                 geom = feature.geometry().asPolyline()
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end
-                branch = [(startx,starty),(endx,endy)]        
+                branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]        
                 for b in branch:
                     if b in Graph: #node count
                         Graph[b] += 1
@@ -122,67 +135,192 @@ class RepairTool(QgsProcessingAlgorithm):
             except Exception as e:
                 feedback.reportError(QCoreApplication.translate('Node Error','%s'%(e)))
                 
-        total = 100.0/total
+        features = mpsp['OUTPUT'].getFeatures(QgsFeatureRequest())
 
-        features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
-        
-        fet = QgsFeature() 
-        feedback.pushInfo(QCoreApplication.translate('Create Lines','Extending Lines'))
-        for enum,feature in enumerate(features):
+        edges = {}
+        attrs = {}
+        if E:
+            feedback.pushInfo(QCoreApplication.translate('Create Lines','Extending Line Geometries'))
+        else:
+            fet = QgsFeature()
+            feedback.pushInfo(QCoreApplication.translate('Create Lines','Creating Line Geometries'))
+        for feature in features:
             try:    
-                feedback.setProgress(int(enum*total))
-                geom = feature.geometry().asPolyline()
+                geomFeat = feature.geometry()
+                geom = geomFeat.asPolyline()
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end
-                branch = [(startx,starty),(endx,endy)]
-                rows = [feature.id()]
+                branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]  
+            
+                fID = feature['Fault No'] 
+ 
                 if branch[0] == branch[1]: #delete loops
                     continue
-                in_geom = feature.geometry()
 
-                pnts = []
                 ds,de = 0,0
                 vertices = [Graph[branch[0]],Graph[branch[1]]]
+                
                 if T:
-                    if in_geom.length() < distance and 1 in vertices: #trim short isolated lines
+                    if geomFeat.length() < distance and 1 in vertices: #trim short isolated lines
                         continue
+                    if E == False:
+                        rows = []
+                        for field in layer.fields():
+                            rows.append(feature[field.name()])
+                            
+                        fet.setGeometry(geomFeat)
+                        fet.setAttributes(rows)
+                        writer.addFeature(fet,QgsFeatureSink.FastInsert) 
+                        continue
+                    
                 if E:
-                    if vertices[0] == 1: #extend startpoint
-                        near = index.nearestNeighbor(QgsPointXY(startx,starty), 3) #look for 3 closest lines
-                        d = 1e10
-                        for id in near:
-                            if id != feature.id():
-                                id_geom = data[id]
-                                testGeom = QgsGeometry.fromPointXY(QgsPointXY(startx,starty))
-                                dist = QgsGeometry.distance(testGeom, id_geom)
-                                if dist < d and dist > 0:
-                                    d = dist
-                        if d < distance:
-                            ds = distance
+                    if vertices[0] == 1:
+                        testGeom = geomFeat.extendLine(distance,0)
+                        near = index.nearestNeighbor(QgsPointXY(startx,starty), 2) #look for x closest lines
+                        ds = 0
+                        for nid in near:
+                            value = data[nid]
+                            inFID = value['Fault No']
+                            if inFID != fID:
+                                id_geom = value.geometry()
+                                if testGeom.intersects(id_geom):
+                                    ds = distance
+                                    break
+            
+                    if vertices[1] == 1:
+                        testGeom2 = geomFeat.extendLine(0,distance)
+                        near = index.nearestNeighbor(QgsPointXY(endx,endy), 2) #look for x closest lines
+                        de = 0
 
-                    if vertices[1] == 1:#extend endpoint
-                        near = index.nearestNeighbor(QgsPointXY(endx,endy), 3) #look for 3 closest lines
-                        d = 1e10
-                        for id in near:
-                            if id != feature.id():
-                                id_geom = data[id]
-                                testGeom = QgsGeometry.fromPointXY(QgsPointXY(endx,endy))
-                                dist = QgsGeometry.distance(testGeom, id_geom)
-                                if dist < d and dist > 0:
-                                    d = dist
-                        if d < distance :
-                            de = distance
+                        for nid in near:
+                            value = data[nid]
+                            inFID = value['Fault No']
+  
+                            if inFID != fID:
+                                id_geom = value.geometry()
+                                if testGeom2.intersects(id_geom):
+                                    de = distance
+                                    break
+                                    
+                    if ds > 0 or de > 0:
+                        geomFeat = geomFeat.extendLine(ds,de)
+                    
+                    if fID not in attrs:
+                        rows = []
+                        for field in layer.fields():
+                            rows.append(feature[field.name()])
+                        attrs[fID] = rows
                         
-                    in_geom = in_geom.extendLine(ds,de)
-    
+                    part = geomFeat.asPolyline()
+                    startx2 = None
+                    
+                    for point in part:
+                        if startx2 == None:	
+                            startx2,starty2 = (point.x(),point.y())
+                            continue
+                        endx2,endy2 = (point.x(),point.y())
 
-                fet.setGeometry(in_geom)
-                fet.setAttributes(rows)
-                writer.addFeature(fet,QgsFeatureSink.FastInsert) 
- 
+                        if fID not in edges:
+                            nGraph = nx.Graph()
+                            edges[fID] = nGraph  
+                            
+                        edges[fID].add_edge((startx2,starty2),(endx2,endy2),weight=1)
+                        startx2,starty2 = endx2,endy2
+  
             except Exception as e:
                 feedback.reportError(QCoreApplication.translate('Repaired Line','%s'%(e)))
-        
+        if E:
+            vl = QgsVectorLayer("LineString?crs=%s"%(layer.sourceCrs().authid() ), "tempLines", "memory")        
+            fet = QgsFeature()
+            pr = vl.dataProvider()
+            pr.addAttributes([QgsField("FID", QVariant.Int)])
+            vl.startEditing()
+            for FID,Graph in edges.items(): #Define order of line segments
                 
+                for c in nx.connected_components(Graph):
+                    G = Graph.subgraph(c)
+                    source = list(G.nodes())[0]
+                    for n in range(2):
+                        length,path = nx.single_source_dijkstra(G,source,weight='weight')
+                        Index = max(length,key=length.get)
+                        source = path[Index][-1]
+                        
+                    points = []    
+                    for p in path[Index]:
+                        points.append(QgsPointXY(p[0],p[1]))
+        
+                    rows = [FID] 
+                    fet.setGeometry(QgsGeometry.fromPolylineXY(points))
+                    fet.setAttributes(rows)
+                    pr.addFeatures([fet])
+
+            vl.commitChanges()
+            
+            params = {'INPUT':vl,'LINES':vl,'OUTPUT':'memory:'}  
+            templines = st.run('native:splitwithlines',params,context=context,feedback=feedback)      
+            del vl
+            edges,Graph = {},{}
+            total = 0
+
+            for feature in templines['OUTPUT'].getFeatures(QgsFeatureRequest()):
+                try:      
+                    total += 1
+                    geom = feature.geometry().asPolyline()
+                    start,end = geom[0],geom[-1]
+                    startx,starty=start
+                    endx,endy=end
+                    branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]        
+                    for b in branch:
+                        if b in Graph: #node count
+                            Graph[b] += 1
+                        else:
+                            Graph[b] = 1       
+
+                except Exception as e:
+                    feedback.reportError(QCoreApplication.translate('Node Error','%s'%(e)))
+            
+            if total > 0:
+                total = 100.0/total
+
+            outData = {}
+
+            feedback.pushInfo(QCoreApplication.translate('Create Lines','Creating Line Geometries'))
+            for enum,feature in enumerate(templines['OUTPUT'].getFeatures(QgsFeatureRequest())):
+                try:    
+                    if total > 0:
+                        feedback.setProgress(int(enum*total))
+                    geomFeat = feature.geometry()
+                    geom = geomFeat.asPolyline()
+                    start,end = geom[0],geom[-1]
+                    startx,starty=start
+                    endx,endy=end
+                    branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]  
+                
+                    fID = feature['FID'] 
+
+                    vertices = [Graph[branch[0]],Graph[branch[1]]]
+
+                    if geomFeat.length() < distance*1.001 and 1 in vertices: #trim short isolated lines
+                            continue
+
+                    if fID not in outData:
+                        outData[fID] = []
+
+                    outData[fID].append(geomFeat)    
+                    
+                except Exception as e:
+                    feedback.reportError(QCoreApplication.translate('Repaired Line','%s'%(e)))
+            
+            for k,v in outData.items():
+                rows = attrs[k]   
+                outGeom = []
+                for geom in v:
+                    lineString = geom.asPolyline()
+                    outGeom.append(lineString)
+                polyline = QgsGeometry.fromMultiPolylineXY(outGeom)
+                fet.setGeometry(polyline)
+                fet.setAttributes(rows)
+                writer.addFeature(fet,QgsFeatureSink.FastInsert) 
+        
         return {self.Repaired:dest_id}

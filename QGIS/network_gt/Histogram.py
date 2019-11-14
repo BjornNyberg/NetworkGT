@@ -8,13 +8,14 @@ from qgis.PyQt.QtGui import QIcon
 
 import plotly.graph_objs as go
 import plotly.plotly as py
-import plotly,os
+import plotly,os,string,random
 
 class Histogram(QgsProcessingAlgorithm):
 
     Network = 'Network'
     Group = 'Group Field'
     Weight = 'Weight Field'
+    Export = 'Export SVG File'
     
     def __init__(self):
         super().__init__()
@@ -58,13 +59,16 @@ class Histogram(QgsProcessingAlgorithm):
 
         self.addParameter(QgsProcessingParameterField(self.Group,
             self.tr('Group Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric,optional=True))
-
+        self.addParameter(QgsProcessingParameterBoolean(self.Export,
+                    self.tr("Export SVG File"),False))
+        
     def processAlgorithm(self, parameters, context, feedback):
             
         Network = self.parameterAsSource(parameters, self.Network, context)
         
         WF = self.parameterAsString(parameters, self.Weight, context)
         G = self.parameterAsString(parameters, self.Group, context)
+        E = parameters[self.Export]
         
         x = {}
         
@@ -78,7 +82,9 @@ class Histogram(QgsProcessingAlgorithm):
             if WF:
                 v = feature[WF]
             else:
-                v = feature.geometry().length()
+                geom = feature.geometry()
+
+                v = geom.length()
 
             if ID not in x:
                 x[ID] = []
@@ -94,6 +100,16 @@ class Histogram(QgsProcessingAlgorithm):
 
         layout = go.Layout(barmode='stack')
         fig = go.Figure(data=traces, layout=layout)
-        plotly.offline.plot(fig)
+        
+        fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+        outDir = os.path.join(os.environ['TMP'],'Plotly')
+        if not os.path.exists(outDir):
+            os.mkdir(outDir)
+        if E:
+            fname = os.path.join(outDir,'%s.svg'%(fname))
+            plotly.offline.plot(fig,image='svg',filename=fname)
+        else:
+            fname = os.path.join(outDir,'%s.html'%(fname))
+            plotly.offline.plot(fig,filename=fname)
         
         return {}

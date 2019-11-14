@@ -14,15 +14,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 import os, sys, math
 import processing as st
 import numpy as np
+import pandas as pd
 import networkx as nx
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField, QgsFeature, QgsPointXY, QgsProcessingParameterBoolean,QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
+from qgis.core import (QgsField, QgsFeature, QgsPointXY, QgsProject,QgsProcessingParameterFileDestination, QgsProcessingParameterBoolean,QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
 
 class Clusters(QgsProcessingAlgorithm):
 
     Network = 'Fracture Network'
     stats = 'Calculate Statistics'
+    OUTPUT = 'Output Statistics'
     
     def __init__(self):
         super().__init__()
@@ -37,13 +39,13 @@ class Clusters(QgsProcessingAlgorithm):
         return self.tr("Define Clusters")
  
     def group(self):
-        return self.tr("Geometry")
+        return self.tr("Topology")
     
     def shortHelpString(self):
         return self.tr("Define Clusters of a Fracture Network")
 
     def groupId(self):
-        return "Geometry"
+        return "Topology"
     
     def helpUrl(self):
         return "https://github.com/BjornNyberg/NetworkGT/blob/master/QGIS/README.pdf"
@@ -60,15 +62,20 @@ class Clusters(QgsProcessingAlgorithm):
             self.Network,
             self.tr("Fracture Network"),
             [QgsProcessing.TypeVectorLine]))
-        
-        self.addParameter(QgsProcessingParameterBoolean(self.stats,
-                self.tr("Calculate Statistics"),False))
+
+        self.addParameter(QgsProcessingParameterFileDestination(self.OUTPUT,
+                            self.tr('Output Statistics'), ".csv"))
     
     def processAlgorithm(self, parameters, context, feedback):
          
         Network = self.parameterAsLayer(parameters, self.Network, context)
-
-        S = parameters[self.stats]
+        
+        out = parameters[self.OUTPUT]
+        if out != 'TEMPORARY_OUTPUT':
+            S = True
+        else:
+            S = False
+        
         pr = Network.dataProvider()
 
         field_check = Network.fields().indexFromName('Sample_No_')
@@ -76,30 +83,7 @@ class Clusters(QgsProcessingAlgorithm):
         
         if Network.fields().indexFromName('Cluster') == -1:            
             pr.addAttributes([QgsField('Cluster', QVariant.Int)])
-            
-        if S:
-            if field_check2 != -1:
-                fnames =  ['C - C','C - I','I - I','C - U','C - I','U - U','Clus']
-            else:
-                fnames = ['Clus']
-            dataV = {}
-            idxs = {}
-            
-            stats = ['sum','count']    
-            for k in fnames:
-                for s in stats:
-                    field = '%s %s'%(s,k)
-                    if Network.fields().indexFromName(field) == -1:
-                        pr.addAttributes([QgsField(field, QVariant.Double)])
-                    
-            Network.updateFields()
-            
-            for k in fnames:
-                for s in stats:
-                    field = '%s %s'%(s,k)
-                    idxs[field] = Network.fields().indexFromName(field)
-        else:
-            Network.updateFields()
+            Network.updateFields()                  
 
         idx = Network.fields().indexFromName('Cluster')
           
@@ -155,7 +139,11 @@ class Clusters(QgsProcessingAlgorithm):
                 for edge in G2.edges():
                     data = edge + (FID,)
                     clusters[data] = c
-               
+                    
+        clusterIDs = []
+        branchType = []
+        branchLength = []
+        
         Network.startEditing()  
         feedback.pushInfo(QCoreApplication.translate('Clusters','Updating Feature Class'))
         for enum,feature in enumerate(Network.getFeatures()):
@@ -193,62 +181,39 @@ class Clusters(QgsProcessingAlgorithm):
                 if S and cluster != -1:
                     if field_check2 != -1:
                         C = feature['Connection']
-                        names = {'C - C':[],'C - I':[],'I - I':[],'C - U':[],'C - I':[],'U - U':[]}
-                    else:
-                        C = 'Clus'
-                        names = {'Clus':[]}
+                        branchType.append(C)
 
-                    if cluster not in dataV:
-                        dataV[cluster] = names
-                          
-                    values = dataV[cluster]
-                    values[C].append(feature.geometry().length())
+                    clusterIDs.append(cluster)
+                    branchLength.append(feature.geometry().length())
                     
-                    dataV[cluster] = values
             except Exception:
                 continue
                 
         Network.commitChanges()
         
         if S:
-            Network.startEditing()
-            feedback.pushInfo(QCoreApplication.translate('Clusters','Updating Statistics'))
+            feedback.pushInfo(QCoreApplication.translate('Clusters','Creating Statistics File'))
 
-            for enum,feature in enumerate(Network.getFeatures()):
-                try:
-                    if total > 0:
-                        feedback.setProgress(int(enum*total))
-                        
-                    cluster = feature['Cluster']
-                    clusterV = dataV[cluster]
-                    
-                    rows = {}
-                    for k in fnames: 
-                        for s in stats:
-                            field = '%s %s'%(s,k)
-                            idx = idxs[field]
-                            
-                            if k not in clusterV:
-                                values = [val for sublist in list(clusterV.values()) for val in sublist]
-                            else:
-                                values = clusterV[k]
-                                
-                            if s == 'count':
-                                rows[idx] = float(np.size(values))
-                            elif s == 'min':
-                                rows[idx] = float(np.min(values))
-                            elif s == 'mean':
-                                rows[idx] = float(np.mean(values))
-                            elif s == 'max':
-                                rows[idx] = float(np.max(values))
-                            elif s == 'sum':
-                                rows[idx] = float(np.sum(values))
-                        
-                    pr.changeAttributeValues({feature.id():rows})
-                    
-                except Exception:
-                    continue
-            Network.commitChanges()
-        
-        return {}
+            stats = ['sum','count']
+            if field_check2 != -1:
+                df = pd.DataFrame.from_dict({'Cluster':clusterIDs,'B':branchType, 'Length':branchLength})
+                values = df.pivot_table(index='Cluster',columns='B',values='Length',aggfunc=['sum','count'])
+            else:
+                df = pd.DataFrame.from_dict({'Cluster':clusterIDs, 'Length':branchLength})
+                values = df.pivot_table(index='Cluster',values='Length',aggfunc=['sum','count'])
+  
+            cols = ["{0} {1}".format(x,y) for x,y in zip(values.columns.get_level_values(0),values.columns.get_level_values(1))]
+            values.columns = cols
+
+            colNum = int(len(cols)/2)
+            S = values.iloc[:,:colNum].sum(axis=1)
+            C = values.iloc[:,colNum:].sum(axis=1)
+            values["Sum"] = S
+            values["Count"] = C
+            values.fillna(0,inplace=True)
+            values.to_csv(path_or_buf=out)
+            
+            return {'Cluster Stats':out}
+        else:
+            return {}
                 

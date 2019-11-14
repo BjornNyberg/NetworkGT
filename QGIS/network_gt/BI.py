@@ -123,7 +123,7 @@ class IBlocks(QgsProcessingAlgorithm):
             for m in cursorm:
                 if R > -1:
                     Radius = feature['Radius']
-                    geom = feature.geometry().centroid().buffer(float(Radius),5)
+                    geom = feature.geometry().centroid().buffer(float(Radius),100)
                 else:
                     geom = feature.geometry()
                 if geom.intersects(m): #Block intersects sample area
@@ -133,6 +133,8 @@ class IBlocks(QgsProcessingAlgorithm):
                     data.append(intersect.area())
             if data:
                 pr.changeAttributeValues({feature.id():{idxs[0]:float(np.min(data)),idxs[1]:float(np.mean(data)),idxs[2]:float(np.max(data)),idxs[3]:float(sum(data)),idxs[4]:float(len(data)),idxs[5]:float(len(data)-count)}})
+            else:
+                pr.changeAttributeValues({feature.id():{idxs[0]:0,idxs[1]:0,idxs[2]:0,idxs[3]:0,idxs[4]:0,idxs[5]:0}})
         layer.commitChanges() 
 
         return {self.Blocks:dest_id}

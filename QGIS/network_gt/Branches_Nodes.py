@@ -63,7 +63,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
             [QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.Sample_Area,
-            self.tr("Sample_Area"),
+            self.tr("Sample Area"),
             [QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.IB,
@@ -119,40 +119,37 @@ class BranchesNodes(QgsProcessingAlgorithm):
         
         feedback.pushInfo(QCoreApplication.translate('TempFiles','Creating Temporary Files'))
         if infc2:
-            parameters = {'INPUT':infc2,'OUTPUT':'memory:'}  
-            tempmask = st.run('qgis:polygonstolines',parameters,context=context,feedback=feedback)                   
-            
-            parameters = {'INPUT':infc,'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}   
-            tempint = st.run('native:intersection',parameters,context=context,feedback=feedback)
+            params = {'INPUT':infc2,'OUTPUT':'memory:'}  
+            tempmask = st.run('qgis:polygonstolines',params,context=context,feedback=feedback)                   
+            params = {'INPUT':infc,'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}   
+            tempint = st.run('native:intersection',params,context=context,feedback=feedback)
             cursorm = [feature.geometry() for feature in tempmask['OUTPUT'].getFeatures(QgsFeatureRequest())]
-            parameters = {'INPUT':tempint['OUTPUT'],'OUTPUT':'memory:'}  
-        else:
-            parameters = {'INPUT':infc,'OUTPUT':'memory:'}  
-            cursorm = []
-        
-        tempsp = st.run("native:multiparttosingleparts",parameters,context=context,feedback=feedback)
-        
-        parameters = {'INPUT':tempsp['OUTPUT'],'LINES':tempsp['OUTPUT'],'OUTPUT':'memory:'}  
-        templines = st.run('native:splitwithlines',parameters,context=context,feedback=feedback)   
+            infc = tempint['OUTPUT']
+            
+        params = {'INPUT':infc,'LINES':infc,'OUTPUT':'memory:'}  
+        templines = st.run('native:splitwithlines',params,context=context,feedback=feedback)   
         
         field_check = Sample_Area.fields().indexFromName('Radius')
         
         if field_check != -1:
-            parameters = {'INPUT':infc3,'ALL_PARTS':False,'OUTPUT':'memory:'} 
-            centroids = st.run('native:centroids',parameters,context=context,feedback=feedback) 
+            params = {'INPUT':infc3,'ALL_PARTS':False,'OUTPUT':'memory:'} 
+            centroids = st.run('native:centroids',params,context=context,feedback=feedback) 
             
-            parameters = {'INPUT':centroids['OUTPUT'],'DISTANCE':QgsProperty.fromField('Radius'), 'SEGMENTS': 5, 'END_CAP_STYLE':0,'JOIN_STYLE':0,'MITER_LIMIT':2,'DISSOLVE':False,'OUTPUT':'memory:'}
-            buff = st.run('native:buffer',parameters,context=context,feedback=feedback)
+            params = {'INPUT':centroids['OUTPUT'],'DISTANCE':QgsProperty.fromField('Radius'), 'SEGMENTS': 100, 'END_CAP_STYLE':0,'JOIN_STYLE':0,'MITER_LIMIT':2,'DISSOLVE':False,'OUTPUT':'memory:'}
+            buff = st.run('native:buffer',params,context=context,feedback=feedback)
+
+            if infc2:
+                params = {'INPUT':buff['OUTPUT'],'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}   
+                samplemask = st.run('native:intersection',params,context=context,feedback=feedback)   
+                Sample_Area = samplemask['OUTPUT']
+            else:
+                Sample_Area = buff['OUTPUT']
             
-            parameters = {'INPUT':buff['OUTPUT'],'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}   
-            samplemask = st.run('native:intersection',parameters,context=context,feedback=feedback)   
-            
-            Sample_Area = samplemask['OUTPUT']            
             
         unknown_nodes,point_data = [],[]
         c_points = {}   
         Graph = {} #Store all node connections
-        
+        P = 6
         feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Node Information'))
 
         features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
@@ -164,7 +161,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end
-                branch = [(round(startx,8),round(starty,8)),(round(endx,8),round(endy,8))]          
+                branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]          
                 for b in branch:
                     if b in Graph: #node count
                         Graph[b] += 1
@@ -177,16 +174,16 @@ class BranchesNodes(QgsProcessingAlgorithm):
             feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Unknown Nodes'))
             features = layer.getFeatures(QgsFeatureRequest())
             for feature in features:
-                try:  
+                try:
                     for m in cursorm:
                         if feature.geometry().intersects(m):
                             geom = feature.geometry().intersection(m)
                             if QgsWkbTypes.isSingleType(geom.wkbType()):
                                 x,y = geom.asPoint()
-                                unknown_nodes.append((round(x,8),round(y,8)))   
+                                unknown_nodes.append((round(x,P),round(y,P)))   
                             else:
                                 for x,y in geom.asMultiPoint(): #Check for multipart polyline
-                                    unknown_nodes.append((round(x,8),round(y,8)))       
+                                    unknown_nodes.append((round(x,P),round(y,P)))       
                 except Exception as e:
                     feedback.reportError(QCoreApplication.translate('Interpretation Boundary','%s'%(geom.wkbType())))
                     
@@ -198,30 +195,30 @@ class BranchesNodes(QgsProcessingAlgorithm):
         features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
         feedback.pushInfo(QCoreApplication.translate('BranchesNodes','Creating Branches and Nodes'))
         for enum,feature in enumerate(features):
-            try:    
+            try:
                 feedback.setProgress(int(enum*total))
                 geom = feature.geometry().asPolyline()
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end
-                branch = [(round(startx,8),round(starty,8)),(round(endx,8),round(endy,8))]    
+                branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]    
                 name = []      
-                for (x,y) in branch:  
+                for (x,y) in branch:
                     if (x,y) in unknown_nodes:
                         V = 'U'
-                    else:
-                        if (x,y) in Graph:
-                            node_count = Graph[(x,y)]
-                            if node_count == 1:
-                                V = 'I'
-                            elif node_count == 3:
-                                V = 'Y'
-                            elif node_count == 4:
-                                V = 'X'
-                            else:
-                                V = 'Error'
+                    elif (x,y) in Graph:
+                        node_count = Graph[(x,y)]
+                        if node_count == 1:
+                            V = 'I'
+                        elif node_count == 3:
+                            V = 'Y'
+                        elif node_count == 4:
+                            V = 'X'
                         else:
-                            V = 'Error'
+                            V = str(node_count)#'Error'
+                            feedback.reportError(QCoreApplication.translate('Interpretation Boundary','Found intersection with %s nodes! Please repair fracture network using the repair tool and/or manual reinterpretation(s)'%(node_count)))
+                    else:
+                        V = 'Error'
                     name.append(V)
                 Class = " - ".join(sorted(name[:2])) #Organize the order of names
                 name = Class.replace('X','C').replace('Y','C')
@@ -234,12 +231,12 @@ class BranchesNodes(QgsProcessingAlgorithm):
                         weight = 1
                         for (x,y) in branch:  #Points
                             testPoint = QgsGeometry.fromPointXY(QgsPointXY(x,y))
-                            if (x,y) in unknown_nodes:
+                            if not testPoint.within(m[0].buffer(-0.001,2)): #Test if point is on edge of sample area
+                                V = 'E'
+                                weight -= 0.5
+                            elif (x,y) in unknown_nodes:
                                 V = 'U'
                                 weight -= 0.5
-                            elif not testPoint.within(m[0].buffer(-0.001,2)): #Test if point is on edge of sample area
-                                V = 'E'
-                                weight -= 0.5                                
                             else:
                                 if (x,y) in Graph:
                                     node_count = Graph[(x,y)]
@@ -250,7 +247,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                                     elif node_count == 4:
                                         V = 'X'
                                     else:
-                                        V = 'Error'
+                                        V = str(node_count)#'Error'
                                 else:
                                     V = 'Error'	
                             if m[1] in c_points:
@@ -277,11 +274,11 @@ class BranchesNodes(QgsProcessingAlgorithm):
                         parts = []
                         
                         if QgsWkbTypes.isSingleType(geom.wkbType()):
-                            parts.append(geom)
-                           
+                            parts.append(geom)   
                         else:
                             for part in geom.parts():  #Check for multipart polyline
                                 parts.append(QgsGeometry.fromPolyline(part)) #intersected geometry
+                                
                         for inter in parts:
                             if inter.length() != 0.0: #Branches
                                 geom = inter.asPolyline()
@@ -291,7 +288,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                                 inter_branch = [(istartx,istarty),(iendx,iendy)]  
                                 weight = 1
                                 for (x,y) in inter_branch: #Points
-                                    rx,ry = round(x,8),round(y,8)   
+                                    rx,ry = round(x,P),round(y,P)   
                                     V = 'E'     
                                     if (rx,ry) in unknown_nodes:
                                         V = 'U'
@@ -304,7 +301,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                                             elif node_count == 4:
                                                 V = 'X'
                                             else:
-                                                V = 'Error'
+                                                V = str(node_count)#'Error'
  
                                     if m[1] in c_points:
                                         if (rx,ry) not in c_points[m[1]]:

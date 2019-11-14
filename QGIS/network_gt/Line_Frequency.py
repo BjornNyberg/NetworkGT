@@ -11,7 +11,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
     
-import os, sys, math
+import os, sys, math, string, random
 import processing as st
 import pandas as pd
 import networkx as nx
@@ -20,7 +20,7 @@ import plotly.graph_objs as go
 import plotly.plotly as py
 import plotly
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField, QgsFeature, QgsPointXY,QgsSpatialIndex, QgsProcessingParameterFolderDestination, QgsProcessingParameterField, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
+from qgis.core import (QgsField, QgsFeature, QgsPointXY,QgsSpatialIndex,QgsProcessingParameterBoolean, QgsProcessingParameterFolderDestination, QgsProcessingParameterField, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
 from collections import OrderedDict
 
@@ -28,9 +28,9 @@ class LineFrequency(QgsProcessingAlgorithm):
 
     LG = 'Line Grid'
     Network = 'Fracture Network'
-    LFD='Line Frequency Data'
     Weight = 'Weight Field'
     Group = "Groupby Field"
+    Export = 'Export SVG File'
     
     def __init__(self):
         super().__init__()
@@ -76,14 +76,17 @@ class LineFrequency(QgsProcessingAlgorithm):
                                 self.tr('Weight Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric, optional=True))
         self.addParameter(QgsProcessingParameterField(self.Group,
                                 self.tr('Group Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Any, optional=True))
+        self.addParameter(QgsProcessingParameterBoolean(self.Export,
+                    self.tr("Export SVG File"),False))
     
     def processAlgorithm(self, parameters, context, feedback):
         
         LG = self.parameterAsSource(parameters, self.LG, context)
         Network = self.parameterAsSource(parameters, self.Network, context)
-
+        E = parameters[self.Export]
+        
         field_check = LG.fields().indexFromName('Sample_No_')
-            
+
         if field_check == -1:
             editLayer = self.parameterAsLayer(parameters, self.LG, context)
             pr = editLayer.dataProvider()   
@@ -104,7 +107,7 @@ class LineFrequency(QgsProcessingAlgorithm):
         infc = parameters[self.LG]
         infc2 = parameters[self.Network]
                                             
-        sources,edges,Lengths,k = {},{},{},{}
+        sources,edges,Lengths = {},{},{}
         for feature in LG.getFeatures():
             geom = feature.geometry()
             if QgsWkbTypes.isSingleType(geom.wkbType()):
@@ -166,25 +169,22 @@ class LineFrequency(QgsProcessingAlgorithm):
                     
             if ID in Lengths:
                 L = Lengths[ID][(endx,endy)]
-                L2 = Lengths[ID][(startx,starty)]
-                if L2 > L:
-                    L = L2
-                    endx,endy = startx,starty
+
                 if gF != None or wF != None:
                     featFIDs = index.nearestNeighbor(QgsPointXY(endx,endy), 2)    
-                    d = 1e10
+
                     for FID in featFIDs:
                         feature2 = orig_data[FID]
                         testGeom = QgsGeometry.fromPointXY(QgsPointXY(endx,endy))
-                        dist = QgsGeometry.distance(testGeom,feature2.geometry())
-
-                        if dist < d:
+                        wFv = 0
+                        gFv = 'Total'
+                        if testGeom.buffer(0.001,5).intersects(feature2.geometry()):
                             if wF:
                                 wFv = feature2[wF]
                             if gF:
-                                gFv = feature2[gF]
-                            d = dist
-
+                                gFv = feature2[gF]  
+                            break
+                        
                 SN.append(ID)
                 D.append(L)
                 if gF:
@@ -197,7 +197,7 @@ class LineFrequency(QgsProcessingAlgorithm):
                     W.append(1)
 
      
-        del sources,edges,Lengths,k
+        del sources,edges,Lengths
 
         data = pd.DataFrame({0:SN, 1:SS, 2:D, 3:W})
         data.dropna(inplace=True)
@@ -208,7 +208,6 @@ class LineFrequency(QgsProcessingAlgorithm):
             final = []
             if len(df) > 1:
 
-                #ax = fig.add_subplot(1,1,1)
                 data = {}
                 vf_values = {}
      
@@ -216,6 +215,7 @@ class LineFrequency(QgsProcessingAlgorithm):
 
                 x,y,c = [0],[0],0.0
                 values = df.sort_values(2)
+                values.iloc[-1, values.columns.get_loc(3)] = 0
 
                 prev = 0
                 for x_value,disp in zip(values[2],values[3]):
@@ -245,9 +245,6 @@ class LineFrequency(QgsProcessingAlgorithm):
                     else:
                         vf_values['Total'] = vf
                         
-                x.append(max_dist)
-                y.append(y[-1])
-
                 traces = [go.Scatter(
                                     x = x,
                                     y = y,
@@ -270,16 +267,26 @@ class LineFrequency(QgsProcessingAlgorithm):
                             y.append(c)
                             x.extend([x_value,x_value])
                             spacing = [x_value - prev]
+                            
                             prev = x_value
                             
                             if n2 not in data:
                                 data[n2] = spacing
                                 
                             else:
-                                spacing_data = data[n2]                            
+                                spacing_data = data[n2]
                                 spacing += spacing_data
                                 data[n2] = spacing
                                 
+                                        
+                        x.append(max_dist)
+                        y.append(y[-1])
+                        
+                        spacing_data = data[n2]
+                        spacing = [max_dist - prev]
+                        spacing += spacing_data
+                        data[n2] = spacing
+                        
                         m = float(max(y)/max_dist)
                         for x_v,y_v in zip(x,y):
                             test_y = x_v*m
@@ -317,7 +324,6 @@ class LineFrequency(QgsProcessingAlgorithm):
                     table_vals[9].append(round(np.std(v)/np.mean(v),2))
                     
                 for k,vf in vf_values.items():
-                    #table_vals = outValues[k]
                     table_vals[10].append(round(max(vf),2))
                     table_vals[11].append(round(min(vf),2))
                     table_vals[12].append(round(math.fabs(max(vf))+ math.fabs(min(vf)),2))
@@ -363,20 +369,30 @@ class LineFrequency(QgsProcessingAlgorithm):
                     title= 'Distance',
                     ticklen= 5,
                     gridwidth= 2,
-                    **dict(domain=[0, 1], anchor='y1')#, showticklabels=False)
+                    **dict(domain=[0, 1], anchor='y1')
                 ),
                 yaxis1=dict(
                     axis,
                     title= 'Frequency',
                     ticklen= 5,
                     gridwidth= 2,
-                    **dict(domain=[0.3, 1], anchor='x1')#, showticklabels=False)
+                    **dict(domain=[0.3, 1], anchor='x1')
                 ),
                 
                 showlegend= True
             )
                     
-            fig = dict(data=traces, layout=layout)       
-            plotly.offline.plot(fig,filename=str(n))
+            fig = dict(data=traces, layout=layout)
+            
+            fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+            outDir = os.path.join(os.environ['TMP'],'Plotly')
+            if not os.path.exists(outDir):
+                os.mkdir(outDir)
+            if E:
+                fname = os.path.join(outDir,'%s.svg'%(fname))
+                plotly.offline.plot(fig,image='svg',filename=fname)
+            else:
+                fname = os.path.join(outDir,'%s.html'%(fname))
+                plotly.offline.plot(fig,filename=fname)
 
         return {}

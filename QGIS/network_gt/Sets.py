@@ -84,7 +84,7 @@ class Sets(QgsProcessingAlgorithm):
             bins = list(eval(self.parameterAsString(parameters, self.Sets, context)))
 
         pr = layer.dataProvider()
-        new_fields = ['Set','Orient','Length']    
+        new_fields = ['Set','Orient']    
         for field in new_fields:
             if layer.fields().indexFromName(field) == -1:            
                 pr.addAttributes([QgsField(field, QVariant.Double)])
@@ -98,32 +98,47 @@ class Sets(QgsProcessingAlgorithm):
         for feature in layer.getFeatures():
             geom = feature.geometry()
             if QgsWkbTypes.isSingleType(geom.wkbType()):
-                geom = feature.geometry().asPolyline()
+                geom = [geom.asPolyline()]
             else:
-                geom = feature.geometry().asMultiPolyline()[0]
-            start,end = geom[0],geom[-1]
-            startx,starty=start
-            endx,endy=end
+                geom = geom.asMultiPolyline()
 
-            dx = endx - startx
-            dy =  endy - starty
+            x,y = [],[]
+            for part in geom:
+                startx = None
+                for point in part:
+                    if startx == None:
+                        startx,starty = point
+                    endx,endy=point
+                    
+                    dx = endx - startx
+                    dy =  endy - starty
+                    angle = math.degrees(math.atan2(dy,dx))
+                    bearing = (90.0 - angle) % 360
+                    if bearing >= 180:
+                        bearing -= 180
+                    x.append(math.cos(math.radians(bearing)))
+                    y.append(math.sin(math.radians(bearing)))
+                    startx,starty=endx,endy
 
-            angle = math.degrees(math.atan2(dy,dx))
-            Bearing = (90.0 - angle) % 360
-            if Bearing >= 180:
-                Bearing -= 180
+            v1 = np.mean(x)
+            v2 = np.mean(y)
+
+            if v2 < 0:
+                mean = 180 - math.fabs(np.around(math.degrees(math.atan2(v2,v1)),decimals=4))
+            else:
+                mean = np.around(math.degrees(math.atan2(v2,v1)),decimals = 4)
                 
-            Value = -1
+            value = -1
             for enum, b in enumerate(bins):
                 if float(b[0]) > float(b[1]):
-                    if Bearing >= float(b[0]) or Bearing <= float(b[1]):
-                        Value = enum
+                    if mean >= float(b[0]) or mean <= float(b[1]):
+                        value = enum
                         break
-                elif Bearing >= float(b[0]) and Bearing <= float(b[1]):
-                    Value = enum 
+                elif mean >= float(b[0]) and mean <= float(b[1]):
+                    value = enum 
                     break
                 
-            rows = {idxs[0]:Value,idxs[1]:Bearing,idxs[2]:feature.geometry().length()}
+            rows = {idxs[0]:value,idxs[1]:float(mean)}
 
             pr.changeAttributeValues({feature.id():rows}) 
         layer.commitChanges() 

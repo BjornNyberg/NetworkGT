@@ -75,7 +75,13 @@ class TBlocks(QgsProcessingAlgorithm):
             for field in new_fields:
                 if layer.fields().indexFromName(field) == -1:            
                     pr.addAttributes([QgsField(field, QVariant.Double)])
-            layer.updateFields() 
+                
+            layer.updateFields()
+
+            idxs = []
+            for field in new_fields:
+                idxs.append(layer.fields().indexFromName(field))
+                
             T = layer.fields().indexFromName('Sample_No_')
             if T == -1:
                 feedback.reportError(QCoreApplication.translate('Error','Topology Parameters dataset input is invalid - requires a Sample_No_ field'))
@@ -87,6 +93,7 @@ class TBlocks(QgsProcessingAlgorithm):
                 feedback.reportError(QCoreApplication.translate('Error','Cluster input is invalid - Run Clustering tool prior to Block Analysis tool'))
                 return {}
 
+            iclusters = {}
             clusters = {}
             
             total = 100.0/layer2.featureCount()
@@ -97,22 +104,20 @@ class TBlocks(QgsProcessingAlgorithm):
                 ID = feature['Sample_No_']
                 CL = feature['Cluster']
                 if ID not in clusters:
-                    if feature['Weight'] == 0.5:
-                        clusters[ID] = {CL:1}
-                    else:
-                        clusters[ID] = {CL:0}
-                else:
-                    cluster = clusters[ID]
-                    if CL not in cluster:
-                        if feature['Weight'] == 0.5:
-                            cluster[CL] = 1
-                        else:
-                            cluster[CL] = 0
-                    else:
-                        value = cluster[CL]
-                        if value != 0 and feature['Weight'] == 0.5:
-                            cluster[CL] = 1
-                    clusters[ID] = cluster
+                    clusters[ID] = []
+                    iclusters[ID] = {}
+                    
+                cluster = clusters[ID]
+                if CL not in cluster:
+                    cluster.append(CL)
+                    
+                icluster = iclusters[ID]
+                if CL not in icluster:
+                    if feature['Weight'] != 1:
+                        icluster[CL] = 1
+    
+                clusters[ID] = cluster
+                iclusters[ID] = icluster
 
             total = 100.0/layer.featureCount()
             feedback.pushInfo(QCoreApplication.translate('Blocks','Calculating Theoretical Blocks'))
@@ -126,20 +131,25 @@ class TBlocks(QgsProcessingAlgorithm):
                     num_n = feature['No. Nodes'] 
                     num_en = feature['E']
 
-                    num_b = feature['C - C'] + feature['I - I'] + feature['C - I']
+                    num_b = (feature['X']*4 + feature['Y']*3 + feature['I'] + feature['U'] + num_en)/2.0
 
                     num_c = len(clusters[ID])
-                    num_ic = sum(clusters[ID].values())
+                    num_ic = sum(iclusters[ID].values())
+                    
                     Area = feature['Area']
                                  
-                    blocks = num_b - num_n + num_c
+                    blocks = num_b - (num_n + num_en) + num_c
 
+                    tbArea = 0 
                     if num_ic > 0:
+                        
                         tb = ((num_en - num_ic + 1) / 2.0) + blocks
+                        if tb > 0:
+                            tbArea = Area/tb
                     else:
                         tb = 0
 
-                    pr.changeAttributeValues({feature.id():{f_len-3:float(blocks),f_len-2:float(tb),f_len-1:float(tb/Area)}})
+                    pr.changeAttributeValues({feature.id():{idxs[0]:float(blocks),idxs[1]:float(tb),idxs[2]:tbArea}})
             layer.commitChanges() 
 
         except Exception as e:

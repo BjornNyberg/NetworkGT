@@ -11,7 +11,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
     
-import  os,sys, time,math
+import  os,math,random,string
 import numpy as np
 import plotly
 import plotly.plotly as py
@@ -33,6 +33,7 @@ class RoseDiagrams(QgsProcessingAlgorithm):
     Bins = 'Bins'
     Weight = 'Field'
     Group = "Group"
+    Export = 'Export SVG File'
     
     def __init__(self):
         super().__init__()
@@ -79,6 +80,9 @@ class RoseDiagrams(QgsProcessingAlgorithm):
                                 self.tr('Weight Field'), parentLayerParameterName=self.FN, type=QgsProcessingParameterField.Numeric, optional=True))
         self.addParameter(QgsProcessingParameterField(self.Group,
                                 self.tr('Group Field'), parentLayerParameterName=self.FN, type=QgsProcessingParameterField.Any, optional=True))
+        self.addParameter(QgsProcessingParameterBoolean(self.Export,
+                    self.tr("Export SVG File"),False))
+        
 
     def processAlgorithm(self, parameters, context, feedback):
             
@@ -86,6 +90,7 @@ class RoseDiagrams(QgsProcessingAlgorithm):
         WF = self.parameterAsString(parameters, self.Weight, context)
         G = self.parameterAsString(parameters, self.Group, context)
         bins = parameters[self.Bins]
+        E = parameters[self.Export]
         
         feedback.pushInfo(QCoreApplication.translate('RoseDiagram','Reading Data'))
         
@@ -100,20 +105,44 @@ class RoseDiagrams(QgsProcessingAlgorithm):
                 W = feature[WF]
             else:
                 W = 1
-            geom = feature.geometry().asPolyline()
-            start,end = geom[0],geom[-1]
-            startx,starty=start
-            endx,endy=end
-            dx = endx - startx
-            dy =  endy - starty
-            angle = math.degrees(math.atan2(dy,dx))
-            Bearing = (90.0 - angle) % 360
-            if Bearing >= 180:
-                Bearing -= 180  
-            if ID in data:
-                data[ID].append((Bearing,W))
+                
+            geom = feature.geometry()
+            v = geom.length()
+            if QgsWkbTypes.isSingleType(geom.wkbType()):
+                geom = [geom.asPolyline()]
             else:
-                data[ID] = [(Bearing,W)]
+                geom = geom.asMultiPolyline()
+
+            x,y = [],[]
+            for part in geom:
+                startx = None
+                for point in part:
+                    if startx == None:
+                        startx,starty = point
+                    endx,endy=point
+                    
+                    dx = endx - startx
+                    dy =  endy - starty
+                    angle = math.degrees(math.atan2(dy,dx))
+                    bearing = (90.0 - angle) % 360
+                    if bearing >= 180:
+                        bearing -= 180
+                    x.append(math.cos(math.radians(bearing)))
+                    y.append(math.sin(math.radians(bearing)))
+                    startx,starty=endx,endy
+
+            v1 = np.mean(x)
+            v2 = np.mean(y)
+
+            if v2 < 0:
+                mean = 180 - math.fabs(np.around(math.degrees(math.atan2(v2,v1)),decimals=4))
+            else:
+                mean = np.around(math.degrees(math.atan2(v2,v1)),decimals = 4)
+                
+            if ID in data:
+                data[ID].append((mean,W))
+            else:
+                data[ID] = [(mean,W)]
               
 
         feedback.pushInfo(QCoreApplication.translate('RoseDiagram','Plotting Data'))
@@ -146,11 +175,13 @@ class RoseDiagrams(QgsProcessingAlgorithm):
             counts = list(counts.values())
 
             bars = go.Barpolar(r=counts,theta0=bins,name=k)
+
             final.append(bars)
 
 
         layout = go.Layout(
                 title='Weighted Rose Diagram',
+
                 font=dict(
                     size=16
                 ),
@@ -159,13 +190,24 @@ class RoseDiagrams(QgsProcessingAlgorithm):
                         size=16
                     )
                 ),
-                radialaxis=dict(
-                    ticksuffix='%'
-                ),
-                orientation=0
+
+             polar=dict(
+                angularaxis=dict(direction="clockwise",tickfont=dict(size=14)),
+            ),
+                    
             )
-        
+
         fig = go.Figure(data=final, layout=layout)
-        plotly.offline.plot(fig)
+        
+        fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+        outDir = os.path.join(os.environ['TMP'],'Plotly')
+        if not os.path.exists(outDir):
+            os.mkdir(outDir)
+        if E:
+            fname = os.path.join(outDir,'%s.svg'%(fname))
+            plotly.offline.plot(fig,image='svg',filename=fname)
+        else:
+            fname = os.path.join(outDir,'%s.html'%(fname))
+            plotly.offline.plot(fig,filename=fname)
                         
         return {}

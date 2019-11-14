@@ -23,7 +23,7 @@ hasProcessingProvider=yes
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=topology, geometry, fracture networks, nodes, branches, distribution analyses, rose diagram, sets
+tags=topology, geometry, fracture networks, nodes, branches, distribution analyses, rose diagram, sets, histogram, line frequency, clusters, blocks, contour grids
 
 homepage=https://github.com/BjornNyberg/NetworkGT
 category=Analysis

@@ -90,12 +90,19 @@ class TopologyParameters(QgsProcessingAlgorithm):
         
         feedback.pushInfo(QCoreApplication.translate('TopologyParameters','Reading Data'))
         
+        samples = []
+        
+        for feature in SA.getFeatures(QgsFeatureRequest()):
+            samples.append(feature['Sample_No_'])
+        
         SN = []
         CLASS = []
         
         for feature in Nodes.getFeatures(QgsFeatureRequest()):
-            SN.append(feature['Sample_No_'])
-            CLASS.append(feature['Class'])
+            v = feature['Sample_No_']
+            if v in samples:
+                SN.append(v)
+                CLASS.append(feature['Class'])
                       
         df = pd.DataFrame({'Sample No.':SN, 'Class':CLASS})
 
@@ -127,14 +134,16 @@ class TopologyParameters(QgsProcessingAlgorithm):
         LEN = []
                       
         for feature in Branches.getFeatures(QgsFeatureRequest()):
-            SN.append(feature['Sample_No_'])
-            B.append(feature['Weight'])
-            CON.append(feature['Connection'])
-            LEN.append(feature.geometry().length())
-
+            v = feature['Sample_No_']
+            if v in samples:
+                SN.append(v)
+                B.append(feature['Weight'])
+                CON.append(feature['Connection'])
+                LEN.append(feature.geometry().length())
         df2 = pd.DataFrame({'Sample No.':SN, 'Branches':B, 'Connection':CON,'Length':LEN})
+
         df3 = df2[['Sample No.','Branches','Connection']].groupby(['Sample No.','Connection']).sum().unstack(level=1)
-        
+
         df3.fillna(0.0,inplace=True)
 
         df3.columns = df3.columns.droplevel()
@@ -149,8 +158,6 @@ class TopologyParameters(QgsProcessingAlgorithm):
         for column in delete_columns:
             if column in df3:
                 del df3[column]
-        
-        #df3['No. Branches'] = df3['C - C'] + df3['C - I'] + df3['I - I'] + df3['C - U'] + df3['I - U'] + df3['U - U']
 
         df2 = df2[['Sample No.','Length','Connection']].groupby(['Sample No.','Connection']).sum().unstack(level=1)
         df2.fillna(0.0,inplace=True)
@@ -164,8 +171,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
             if column in df2:
                 del df2[column]
 
-        df2['Total Trace Length'] = df2['C - C'] + df2['C - I'] + df2['I - I'] + df2['C - U'] + df2['I - U'] + df2['U - U']
-        
+
         check = SA.fields().indexFromName('Radius')
         
         SN = []
@@ -185,16 +191,17 @@ class TopologyParameters(QgsProcessingAlgorithm):
                       
         df4.set_index('Sample No.', inplace=True)
 
-        df['Average Line Length'] = df2['Total Trace Length'] / df['No. Lines']
-        df['Average Branch Length'] = df2['Total Trace Length'] / df['No. Branches']
+        df3['Total Trace Length'] = df2['C - C'] + df2['C - I'] + df2['I - I'] + df2['C - U'] + df2['I - U'] + df2['U - U']
+        df['Average Line Length'] = df3['Total Trace Length'] / df['No. Lines']
+        df['Average Branch Length'] = df3['Total Trace Length'] / df['No. Branches']
         df['Connect/Branch'] = ((3.0*df.Y) + (4.0*df.X)) / df['No. Branches']
         df['Branch Freq'] = df['No. Branches'] / df4['Area']
         df['Line Freq'] = df['No. Lines'] / df4['Area']
         df['NcFreq'] = df['No. Connections'] / df4['Area']
         samples = df.index.tolist()
-        
+
         df4 = df4.ix[samples]
-                      
+        
         r = df4['Circumference']/(numpy.pi*2.0)
 
         a = numpy.pi*r*r
@@ -206,10 +213,10 @@ class TopologyParameters(QgsProcessingAlgorithm):
         df.ix[df.a==0.0,'1D Intensity'] = (df['E'] /(2.0*numpy.pi*r)) *(numpy.pi/2.0)
         del df['a']
         
-        df['2D Intensity'] =  df2['Total Trace Length'] / df4['Area']
+        df['2D Intensity'] =  df3['Total Trace Length'] / df4['Area']
         df['Dimensionless Intensity'] = df['2D Intensity'] * df['Average Branch Length']
         
-        df = pd.concat([df4,df,df3,df2],axis=1)
+        df = pd.concat([df4,df,df3],axis=1)
 
         df = df[numpy.isfinite(df['No. Nodes'])]
         df.replace(numpy.inf, 0.0,inplace=True)
@@ -220,20 +227,17 @@ class TopologyParameters(QgsProcessingAlgorithm):
         
         i = [2,3,4,5,6,7,8,9,10,21,22,23,24,25,26,27]
         fs.append(QgsField('Sample_No_', QVariant.Int))
-        for enum,c in enumerate(df):
-            if enum in i:
-                fs.append(QgsField(c, QVariant.Int))
-            else:
-                fs.append(QgsField(c, QVariant.Double))
+  
+        field_check = SA.fields().indexFromName('Radius')
+
+        if field_check != -1:
+            fs.append(QgsField('Radius', QVariant.Double))
+
+        for c in df:
+            fs.append(QgsField(c, QVariant.Double))
 
         (writer, dest_id) = self.parameterAsSink(parameters, self.TP, context,
                                             fs, QgsWkbTypes.Polygon, Nodes.sourceCrs())
-
-        field_check = SA.fields().indexFromName('Set')
-        if field_check == -1:
-            provider = layer.dataProvider()
-            provider.addAttributes([QgsField('Set', QVariant.Int),QgsField('Orient', QVariant.Double)])
-            layer.updateFields() 
             
         feedback.pushInfo(QCoreApplication.translate('TopologyParametersOutput','Creating Output'))
         fet = QgsFeature() 
@@ -241,6 +245,8 @@ class TopologyParameters(QgsProcessingAlgorithm):
             if feature['Sample_No_'] in samples:
                 fet.setGeometry(feature.geometry())
                 rows = [feature['Sample_No_']]
+                if field_check != -1:
+                    rows.append(feature['Radius'])
                 rows.extend(df.ix[feature['Sample_No_']].tolist())
                 fet.setAttributes(rows)
                 writer.addFeature(fet,QgsFeatureSink.FastInsert)

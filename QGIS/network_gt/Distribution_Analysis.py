@@ -1,4 +1,4 @@
-import math,os
+import math,os,string,random
 import numpy as np
 import pandas as pd
 import processing as st
@@ -20,6 +20,7 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
 
     Network = 'Network'
     Length = 'Weight'
+    Export = 'Export SVG File'
     
     def __init__(self):
         super().__init__()
@@ -59,12 +60,13 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
             [QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterField(self.Length,
             self.tr('Weight Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric,optional=True))
-
+        self.addParameter(QgsProcessingParameterBoolean(self.Export,
+                    self.tr("Export SVG File"),False))
     def processAlgorithm(self, parameters, context, feedback):
             
         Network = self.parameterAsSource(parameters, self.Network, context)   
         group = self.parameterAsString(parameters, self.Length, context)
-        
+        E = parameters[self.Export]
      
         SN = []
         LEN = []
@@ -84,15 +86,12 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
         df_idx = np.arange(1,len(df)+1)
         
         df['Cum_Freq'] = df_idx/float(len(df))*100.0
-        df['CF_NL'] = np.log(df['Cum_Freq'])
-        df['LEN_NL'] = np.log(df['LEN'])
         gmean = mstats.gmean(df['LEN'])/100.000000001
         std = df['LEN'].std()/100.000000001
         df['NSD']=norm.ppf(df['Cum_Freq']/100.00000000001,loc=gmean,scale=std)/std
 
         std = np.std(np.log(df['Cum_Freq']))
-        mean = np.mean(std)
-        
+        mean = np.mean(std)             
         df['LNSD'] = (np.log(lognorm(mean,scale=np.exp(std)).ppf(df['Cum_Freq']/100.00000000001))-mean)/std
             
         samples = df.index.tolist()
@@ -101,29 +100,85 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
         labels = ['geom mean','CoV','skewness','kurtosis']
         vals = [gmean*100.000000001,np.std(df['LEN'])/np.mean(df['LEN']),skew(df['LEN']),kurtosis(df['LEN'])]
 
-        feedback.pushInfo(QCoreApplication.translate('Distribution Analysis',' Summary Statistics'))
+        feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','Summary Statistics'))
         for k,v in info.items():
             feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','%s %s'%(k,v)))
         for l,v in zip(labels,vals):
             feedback.pushInfo(QCoreApplication.translate('Distribution Analysis','%s %s'%(l,v)))
 
-        trace1 = go.Scatter(x=df['LEN'], y=df['Cum_Freq'])
-        trace2 = go.Scatter(x=df['LEN'], y=df['CF_NL'])
-        trace3 = go.Scatter(x=df['LEN_NL'], y=df['CF_NL'])
-        trace4 = go.Scatter(x=df['LEN'], y=df['NSD'])
-        trace5 = go.Scatter(x=df['LEN_NL'], y=df['NSD'])
-                            
+        trace2 = go.Scatter(x=df['LEN'], y=df['Cum_Freq'],xaxis='x1',yaxis='y1',name='Negative Exponential')
+        trace3 = go.Scatter(x=df['LEN'], y=df['Cum_Freq'],xaxis='x2',yaxis='y2',name='Power-law')
+        trace4 = go.Scatter(x=df['LEN'], y=df['NSD'],xaxis='x3',yaxis='y3',name='Normal SD')
+        trace5 = go.Scatter(x=df['LEN'], y=df['LNSD'],xaxis='x4',yaxis='y4',name='Log Normal SD')
 
-        fig = plotly.tools.make_subplots(rows=2, cols=3, specs=[[{}, {},{}],
-           [{},{}, None]],subplot_titles=('Cumulative Frequency', '-ve expotential',
-                                                          'Power-law', 'Normal SD','Log Normal SD'))
+        maxNSD = df['NSD'].tolist()[-2]
+        maxLNSD = df['LNSD'].tolist()[-2]
+        maxSD = df['LEN'].tolist()[-2]
+        
+        layout = go.Layout(
+            xaxis=dict(
+                title='Size',
+                domain=[0, 0.45],
+            ),
+            yaxis=dict(
+                type='log',
+                title='% N',
+                domain=[0.55, 1.0],
+                anchor='x',
+                dtick= 1
+            ),
+            xaxis2=dict(
+                    type='log',
+                    title='Log Size',
+                    domain=[0.55, 1.0],
+                    anchor='y2',
+                    dtick= 1,   
+                ),
+            yaxis2=dict(
+                    type='log',
+                    title='% N',
+                    domain=[0.55, 1.0],
+                    anchor='x2',
+                    dtick= 1
+                ),
+            xaxis3=dict(
+                    title='Size',
+                    domain=[0, 0.45],
+                    anchor='y3',
 
-        fig.append_trace(trace1, 1, 1)
-        fig.append_trace(trace2, 1, 2)
-        fig.append_trace(trace3, 1, 3)
-        fig.append_trace(trace4, 2, 1)
-        fig.append_trace(trace5, 2, 2)
+                ),
+            yaxis3=dict(
+                    title='SD',
+                    domain=[0, 0.45],
+                    anchor='x3',
+                    range=[-maxNSD,maxNSD]
+                ),
+            xaxis4=dict(
+                type='log',
+                title='Log Size',
+                domain=[0.55, 1.0],
+                anchor='y4',
+                dtick= 1,
 
-        plotly.offline.plot(fig)
+            ),
+            yaxis4=dict(
+                
+                title='SD',
+                domain=[0, 0.45],
+                anchor='x4',
+                range=[-maxLNSD,maxLNSD]
+            ))
+
+        fig = go.Figure(data=[trace2,trace3,trace4,trace5],layout=layout)
+        fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+        outDir = os.path.join(os.environ['TMP'],'Plotly')
+        if not os.path.exists(outDir):
+            os.mkdir(outDir)
+        if E:
+            fname = os.path.join(outDir,'%s.svg'%(fname))
+            plotly.offline.plot(fig,image='svg',filename=fname)
+        else:
+            fname = os.path.join(outDir,'%s.html'%(fname))
+            plotly.offline.plot(fig,filename=fname)
         
         return {}
