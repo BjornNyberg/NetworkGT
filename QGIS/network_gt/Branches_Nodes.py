@@ -16,6 +16,7 @@ import processing as st
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsPointXY, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty)
 from qgis.PyQt.QtGui import QIcon
+from math import ceil
 
 class BranchesNodes(QgsProcessingAlgorithm):
 
@@ -149,7 +150,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
         unknown_nodes,point_data = [],[]
         c_points = {}   
         Graph = {} #Store all node connections
-        P = 6
+        P = 100000
         feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Node Information'))
 
         features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
@@ -161,7 +162,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end
-                branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]          
+                branch = [(ceil(startx*P)/P,ceil(starty*P)/P),(ceil(endx*P)/P,ceil(endy*P)/P)]          
                 for b in branch:
                     if b in Graph: #node count
                         Graph[b] += 1
@@ -180,10 +181,10 @@ class BranchesNodes(QgsProcessingAlgorithm):
                             geom = feature.geometry().intersection(m)
                             if QgsWkbTypes.isSingleType(geom.wkbType()):
                                 x,y = geom.asPoint()
-                                unknown_nodes.append((round(x,P),round(y,P)))   
+                                unknown_nodes.append((ceil(x*P)/P,ceil(y*P)/P))  
                             else:
                                 for x,y in geom.asMultiPoint(): #Check for multipart polyline
-                                    unknown_nodes.append((round(x,P),round(y,P)))       
+                                    unknown_nodes.append((ceil(x*P)/P,ceil(y*P)/P))      
                 except Exception as e:
                     feedback.reportError(QCoreApplication.translate('Interpretation Boundary','%s'%(geom.wkbType())))
                     
@@ -201,7 +202,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end
-                branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]    
+                branch = [(ceil(startx*P)/P,ceil(starty*P)/P),(ceil(endx*P)/P,ceil(endy*P)/P)]    
                 name = []      
                 for (x,y) in branch:
                     if (x,y) in unknown_nodes:
@@ -288,7 +289,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                                 inter_branch = [(istartx,istarty),(iendx,iendy)]  
                                 weight = 1
                                 for (x,y) in inter_branch: #Points
-                                    rx,ry = round(x,P),round(y,P)   
+                                    rx,ry = ceil(x*P)/P,ceil(y*P)/P
                                     V = 'E'     
                                     if (rx,ry) in unknown_nodes:
                                         V = 'U'

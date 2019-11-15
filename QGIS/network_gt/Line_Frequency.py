@@ -19,6 +19,7 @@ import numpy as np
 import plotly.graph_objs as go
 import plotly.plotly as py
 import plotly
+from math import ceil
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsPointXY,QgsSpatialIndex,QgsProcessingParameterBoolean, QgsProcessingParameterFolderDestination, QgsProcessingParameterField, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
@@ -106,7 +107,8 @@ class LineFrequency(QgsProcessingAlgorithm):
         
         infc = parameters[self.LG]
         infc2 = parameters[self.Network]
-                                            
+
+        P = 100000                              
         sources,edges,Lengths = {},{},{}
         for feature in LG.getFeatures():
             geom = feature.geometry()
@@ -115,7 +117,7 @@ class LineFrequency(QgsProcessingAlgorithm):
             else:
                 geom = geom.asMultiPolyline()[0]
             x,y = geom[0]
-            startx,starty=round(x,6), round(y,6)
+            startx,starty=ceil(x*P)/P,ceil(y*P)/P
             sources[feature['Sample_No_']] = (startx,starty)
         
         feedback.pushInfo(QCoreApplication.translate('TempFiles','Creating Line Frequency Sampling'))
@@ -132,7 +134,7 @@ class LineFrequency(QgsProcessingAlgorithm):
             startx,starty=start
             endx,endy=end
 
-            pnts1,pnts2 = [(round(startx,6),round(starty,6)),(round(endx,6),round(endy,6))]     
+            pnts1,pnts2 = [(ceil(startx*P)/P,ceil(starty*P)/P),(ceil(endx*P)/P,ceil(endy*P)/P)]     
             Length = feature.geometry().length()
             ID = feature['Sample_No_']
 
@@ -155,8 +157,8 @@ class LineFrequency(QgsProcessingAlgorithm):
             startx,starty=start
             endx,endy=end
 
-            startx,starty = (round(startx,6),round(starty,6))
-            endx, endy = (round(endx,6),round(endy,6))  
+            startx,starty = (ceil(startx*P)/P,ceil(starty*P)/P)
+            endx, endy = (ceil(endx*P)/P,ceil(endy*P)/P)
             
             ID = feature['Sample_No_']
             

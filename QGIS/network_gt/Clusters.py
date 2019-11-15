@@ -11,11 +11,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
     
-import os, sys, math
+import os, sys
 import processing as st
 import numpy as np
 import pandas as pd
 import networkx as nx
+from math import ceil
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsPointXY, QgsProject,QgsProcessingParameterFileDestination, QgsProcessingParameterBoolean,QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
@@ -87,7 +88,7 @@ class Clusters(QgsProcessingAlgorithm):
 
         idx = Network.fields().indexFromName('Cluster')
           
-        Precision = 6
+        P = 100000
         graphs = {}
         total = 100.0/Network.featureCount()
 
@@ -111,8 +112,8 @@ class Clusters(QgsProcessingAlgorithm):
                     
                 start,end = data[0],data[-1]
 
-                startx,starty = (round(start.x(),Precision),round(start.y(),Precision))
-                endx,endy = (round(end.x(),Precision),round(end.y(),Precision))
+                startx,starty = ceil(start.x()*P)/P,ceil(start.y()*P)/P
+                endx,endy = ceil(end.x()*P)/P,ceil(end.y()*P)/P
                 
                 if ID not in graphs:
                     Graph = nx.Graph()
@@ -164,8 +165,8 @@ class Clusters(QgsProcessingAlgorithm):
                         
                 start,end = data[0],data[-1]
 
-                startx,starty = (round(start.x(),Precision),round(start.y(),Precision))
-                endx,endy = (round(end.x(),Precision),round(end.y(),Precision))
+                startx,starty = ceil(start.x()*P)/P,ceil(start.y()*P)/P
+                endx,endy = ceil(end.x()*P)/P,ceil(end.y()*P)/P
                 
                 branch = ((startx,starty),(endx,endy)) + (ID,)
 

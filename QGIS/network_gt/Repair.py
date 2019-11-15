@@ -11,12 +11,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
     
-import os, sys,math
+import os, sys
 import processing as st
 import networkx as nx
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField,QgsVectorFileWriter,QgsVectorLayer,QgsMultiLineString,QgsProcessingParameterField,QgsProcessingParameterBoolean, QgsFeature, QgsPointXY,QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry,QgsSpatialIndex, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty)
 from qgis.PyQt.QtGui import QIcon
+from math import ceil
 
 class RepairTool(QgsProcessingAlgorithm):
 
@@ -83,7 +84,7 @@ class RepairTool(QgsProcessingAlgorithm):
         T = parameters[self.Trim]
         E = parameters[self.Extend]
 
-        P = 10 #Precision
+        P = 100000 #Precision
         pr = layer.dataProvider()
         
         if layer.fields().indexFromName('Fault No') == -1:
@@ -100,7 +101,8 @@ class RepairTool(QgsProcessingAlgorithm):
         distance = parameters[self.Distance]
         params = {'INPUT':infc,'OUTPUT':'memory:'}  
         mpsp = st.run("native:multiparttosingleparts",params,context=context,feedback=feedback) 
-        params = {'INPUT':mpsp['OUTPUT'],'LINES':mpsp['OUTPUT'],'OUTPUT':'memory:'}  
+        params = {'INPUT':mpsp['OUTPUT'],'LINES':mpsp['OUTPUT'],'OUTPUT':'memory:'}
+        params = {'INPUT':mpsp['OUTPUT'],'LINES':infc,'OUTPUT':'memory:'}  
         templines = st.run('native:splitwithlines',params,context=context,feedback=feedback)             
         
         Graph = {} #Store all node connections
@@ -125,7 +127,7 @@ class RepairTool(QgsProcessingAlgorithm):
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end
-                branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]        
+                branch = [(ceil(startx*P)/P,ceil(starty*P)/P),(ceil(endx*P)/P,ceil(endy*P)/P)]        
                 for b in branch:
                     if b in Graph: #node count
                         Graph[b] += 1
@@ -135,10 +137,11 @@ class RepairTool(QgsProcessingAlgorithm):
             except Exception as e:
                 feedback.reportError(QCoreApplication.translate('Node Error','%s'%(e)))
                 
-        features = mpsp['OUTPUT'].getFeatures(QgsFeatureRequest())
+        features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
 
         edges = {}
         attrs = {}
+        extended = set([])
         if E:
             feedback.pushInfo(QCoreApplication.translate('Create Lines','Extending Line Geometries'))
         else:
@@ -151,7 +154,7 @@ class RepairTool(QgsProcessingAlgorithm):
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end
-                branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]  
+                branch = [(ceil(startx*P)/P,ceil(starty*P)/P),(ceil(endx*P)/P,ceil(endy*P)/P)]  
             
                 fID = feature['Fault No'] 
  
@@ -205,6 +208,7 @@ class RepairTool(QgsProcessingAlgorithm):
                                     
                     if ds > 0 or de > 0:
                         geomFeat = geomFeat.extendLine(ds,de)
+                        extended.update([fID])
                     
                     if fID not in attrs:
                         rows = []
@@ -217,9 +221,9 @@ class RepairTool(QgsProcessingAlgorithm):
                     
                     for point in part:
                         if startx2 == None:	
-                            startx2,starty2 = (point.x(),point.y())
+                            startx2,starty2 = (ceil(point.x()*P)/P,ceil(point.y()*P)/P)
                             continue
-                        endx2,endy2 = (point.x(),point.y())
+                        endx2,endy2 = (ceil(point.x()*P)/P,ceil(point.y()*P)/P)
 
                         if fID not in edges:
                             nGraph = nx.Graph()
@@ -270,7 +274,7 @@ class RepairTool(QgsProcessingAlgorithm):
                     start,end = geom[0],geom[-1]
                     startx,starty=start
                     endx,endy=end
-                    branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]        
+                    branch = [(ceil(startx*P)/P,ceil(starty*P)/P),(ceil(endx*P)/P,ceil(endy*P)/P)]        
                     for b in branch:
                         if b in Graph: #node count
                             Graph[b] += 1
@@ -295,13 +299,13 @@ class RepairTool(QgsProcessingAlgorithm):
                     start,end = geom[0],geom[-1]
                     startx,starty=start
                     endx,endy=end
-                    branch = [(round(startx,P),round(starty,P)),(round(endx,P),round(endy,P))]  
+                    branch = [(ceil(startx*P)/P,ceil(starty*P)/P),(ceil(endx*P)/P,ceil(endy*P)/P)]  
                 
                     fID = feature['FID'] 
 
                     vertices = [Graph[branch[0]],Graph[branch[1]]]
 
-                    if geomFeat.length() < distance*1.001 and 1 in vertices: #trim short isolated lines
+                    if geomFeat.length() < distance*1.5 and 1 in vertices and fID in extended: #trim short extended lines
                             continue
 
                     if fID not in outData:
