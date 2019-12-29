@@ -1,2 +1,6 @@
 theme: jekyll-theme-cayman
-title: welcome
+title: NetworkGT
+
+navbar-links:
+  Home: "https://bjornnyberg.github.io/NetworkGT/"
+  Download: "https://github.com/BjornNyberg/NetworkGT/archive/V0.1.1.zip"
