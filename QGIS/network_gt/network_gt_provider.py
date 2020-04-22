@@ -26,27 +26,52 @@ __author__ = 'Bjorn Nyberg'
 __date__ = '2019-08-22'
 __copyright__ = '(C) 2019 by Bjorn Nyberg'
 
-# This will get replaced with a git SHA1 when you do a git archive
-
 __revision__ = '$Format:%H$'
 
 import os
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-from .Branches_Nodes import BranchesNodes
-from .Simple_Grid import ContourGrid
-from .Simple_Line_Grid import LineGrid
-from .Topology_Parameters import TopologyParameters
-from .Line_Frequency import LineFrequency
-from .Distribution_Analysis import DistributionAnalysis
-from .Sets import Sets
-from .rose_diagrams import RoseDiagrams
-from .TB import TBlocks
-from .BI import IBlocks
-from .Clusters import Clusters
-from .Repair import RepairTool
-from .Histogram import Histogram
+#Install
+from .networkgt.configureNetworkGT import configureNetworkGT
+
+#Sampling Tools
+from .networkgt.sampling.Simple_Grid import ContourGrid
+from .networkgt.sampling.Simple_Line_Grid import LineGrid
+
+#Geometry Tools
+from .networkgt.geometry.Line_Frequency import LineFrequency
+from .networkgt.geometry.Distribution_Analysis import DistributionAnalysis
+from .networkgt.geometry.Sets import Sets
+from .networkgt.geometry.rose_diagrams import RoseDiagrams
+from .networkgt.geometry.Histogram import Histogram
+from .networkgt.geometry.Tortuosity import Tortuosity
+
+#Topology Tools
+from .networkgt.topology.TB import TBlocks
+from .networkgt.topology.BI import IBlocks
+from .networkgt.topology.Clusters import Clusters
+from .networkgt.topology.Topology_Parameters import TopologyParameters
+from .networkgt.topology.Branches_Nodes import BranchesNodes
+from .networkgt.topology.ShortestPathway import ShortestPathway
+
+#Digitising Tools
+from .networkgt.digitising.SnapYNodes import SnapYNodes
+from .networkgt.digitising.SnapNodes import SnapNodes
+from .networkgt.digitising.Fracture_Number import Fracture_Lines
+from .networkgt.digitising.Repair import RepairTool
+from .networkgt.digitising.Fracture_Network import Fracture_Network
+from .networkgt.digitising.Thresholding import Thresholding
+from .networkgt.digitising.Extend_Trim import ExtendTrim
+from .networkgt.digitising.SimplifyNetwork import SimplifyNetwork
+
+#Flow Tools
+from .networkgt.flow.Flow1D import Flow1D
+from .networkgt.flow.Flow2D import Flow2D
+from .networkgt.flow.permTensor import permTensor
+from .networkgt.flow.permTensorPlot import permTensorPlot
+from .networkgt.flow.percolation import Percolation
+from .networkgt.flow.aperture import Aperture
 
 class NetworkGTProvider(QgsProcessingProvider):
 
@@ -67,11 +92,11 @@ class NetworkGTProvider(QgsProcessingProvider):
         """
         Loads all algorithms belonging to this provider.
         """
+        self.addAlgorithm(configureNetworkGT())
         self.addAlgorithm(TopologyParameters())
         self.addAlgorithm(BranchesNodes())
         self.addAlgorithm(DistributionAnalysis())
         self.addAlgorithm(LineFrequency())
-        self.addAlgorithm(TopologyParameters())
         self.addAlgorithm(LineGrid())
         self.addAlgorithm(ContourGrid())
         self.addAlgorithm(Sets())
@@ -80,8 +105,24 @@ class NetworkGTProvider(QgsProcessingProvider):
         self.addAlgorithm(IBlocks())
         self.addAlgorithm(Clusters())
         self.addAlgorithm(RepairTool())
+        self.addAlgorithm(SnapNodes())
+        self.addAlgorithm(SnapYNodes())
         self.addAlgorithm(Histogram())
-   
+        self.addAlgorithm(Tortuosity())
+        self.addAlgorithm(ShortestPathway())
+        self.addAlgorithm(Flow1D())
+        self.addAlgorithm(Flow2D())
+        self.addAlgorithm(Fracture_Network())
+        self.addAlgorithm(Fracture_Lines())
+        self.addAlgorithm(Aperture())
+        self.addAlgorithm(permTensor())
+        self.addAlgorithm(permTensorPlot())
+        self.addAlgorithm(Percolation())
+        self.addAlgorithm(ExtendTrim())
+        self.addAlgorithm(Thresholding())
+        self.addAlgorithm(SimplifyNetwork())
+
+
     def id(self):
         """
         Returns the unique provider id, used for identifying the provider. This
@@ -104,7 +145,7 @@ class NetworkGTProvider(QgsProcessingProvider):
         Should return a QIcon which is used for your provider inside
         the Processing toolbox.
         """
-        iconPath = os.path.join( os.path.dirname(__file__), 'icon.jpg')
+        iconPath = os.path.join( os.path.dirname(__file__),'icons', 'icon.png')
         return QIcon(iconPath)
 
     def longName(self):

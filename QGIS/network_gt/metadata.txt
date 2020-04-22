@@ -4,13 +4,13 @@
 
 [general]
 name=NetworkGT
-qgisMinimumVersion=3.0
-description=NetworkGT (Network Geometry and Typology) Toolbox is a set of tools designed for the geometric and topological analysis of fracture networks.
-version=0.1
+qgisMinimumVersion=3.4
+description=NetworkGT (Network Geometry and Topology) Toolbox is a set of tools designed for the geometric and topological analysis of fracture networks.
+version=1.0
 author=Bjorn Nyberg
 email=bjorn.nyberg@uib.no
 
-about=Sample and analyze the geometry and topology of fracture networks.
+about=Citation - Nyberg, B., Nixon, C.W., Sanderson, D.J., 2018, NetworkGT: A GIS tool for geometric and topological analyses of two-dimensional fracture networks. Geosphere, v. 14, no. 4, doi:10.1130/GES01595.1.
 
 tracker=https://github.com/BjornNyberg/NetworkGT/issues
 repository=https://github.com/BjornNyberg/NetworkGT/tree/master/QGIS/network_gt
@@ -23,13 +23,13 @@ hasProcessingProvider=yes
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=topology, geometry, fracture networks, nodes, branches, distribution analyses, rose diagram, sets, histogram, line frequency, clusters, blocks, contour grids
+tags=topology, geometry, fracture networks, nodes, branches, distribution analyses, rose diagram, sets, histogram, line frequency, clusters, blocks, contour grids,tortuosity, shortest pathway, skeleton, repair, snap, flow, aperture, permeability, percolation
 
-homepage=https://github.com/BjornNyberg/NetworkGT
+homepage=https://github.com/BjornNyberg/NetworkGT/wiki
 category=Analysis
 icon=icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
@@ -37,7 +37,7 @@ deprecated=False
 # Since QGIS 3.8, a comma separated list of plugins to be installed
 # (or upgraded) can be specified.
 # Check the documentation for more information.
-plugin_dependencies=pandas
+# plugin_dependencies=
 
 #Category of the plugin: Raster, Vector, Database or Web
 #category=Vector
