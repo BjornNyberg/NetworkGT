@@ -125,7 +125,7 @@ class Sets(QgsProcessingAlgorithm):
             else:
                 geom = geom.asMultiPolyline()
 
-            x,y = [],[]
+            a,tL = 0,0
             for part in geom:
                 startx = None
                 for point in part:
@@ -136,21 +136,18 @@ class Sets(QgsProcessingAlgorithm):
 
                     dx = endx - startx
                     dy =  endy - starty
+
+                    l = math.sqrt((dx**2)+(dy**2))
                     angle = math.degrees(math.atan2(dy,dx))
                     bearing = (90.0 - angle) % 360
-                    l = math.sqrt((dx**2)+(dy**2))
-                    vX = (2*math.cos(math.radians(bearing))*l)/2*l
-                    vY = (2*math.sin(math.radians(bearing))*l)/2*l
-                    x.append(vX)
-                    y.append(vY)
-                    startx,starty=endx,endy
-            v1 = np.mean(x)
-            v2 = np.mean(y)
+                    a += bearing*l
+                    tL += l
+                    startx,starty = endx,endy
 
-            if v2 < 0:
-                mean = np.around(180 - math.fabs(math.degrees(math.atan2(v2,v1))),decimals=4)
-            else:
-                mean = np.around(math.degrees(math.atan2(v2,v1)),decimals = 4)
+            mean = np.around(a/tL,decimals=4)
+
+            if mean > 180:
+                mean = np.around(mean-180,decimals=4)
 
             value = -1
             for enum, b in enumerate(bins):

@@ -136,7 +136,7 @@ class RoseDiagrams(QgsProcessingAlgorithm):
             else:
                 geom = geom.asMultiPolyline()
 
-            x,y,l = [],[],[]
+            a,tL = 0,0
             for part in geom:
                 startx = None
                 for point in part:
@@ -148,22 +148,17 @@ class RoseDiagrams(QgsProcessingAlgorithm):
                     dx = endx - startx
                     dy =  endy - starty
 
+                    l = math.sqrt((dx**2)+(dy**2))
                     angle = math.degrees(math.atan2(dy,dx))
                     bearing = (90.0 - angle) % 360
-                    l = math.sqrt((dx**2)+(dy**2))
-                    vX = (2*math.cos(math.radians(bearing))*l)/2*l
-                    vY = (2*math.sin(math.radians(bearing))*l)/2*l
-                    x.append(vX)
-                    y.append(vY)
-                    startx,starty=endx,endy
+                    a += bearing*l
+                    tL += l
+                    startx,starty = endx,endy
 
-            v1 = np.mean(xD)
-            v2 = np.mean(yD)
+            mean = np.around(a/tL,decimals=4)
 
-            if v2 < 0:
-                mean = 180 - math.fabs(np.around(math.degrees(math.atan2(v2,v1)),decimals=4))
-            else:
-                mean = np.around(math.degrees(math.atan2(v2,v1)),decimals = 4)
+            if mean > 180:
+                mean = np.around(mean-180,decimals=4)
 
             if ID in data:
                 data[ID].append((mean,W))
@@ -173,7 +168,6 @@ class RoseDiagrams(QgsProcessingAlgorithm):
         feedback.pushInfo(QCoreApplication.translate('RoseDiagram','Plotting Data'))
 
         values = []
-
 
         bins = float(bins)
         final = []

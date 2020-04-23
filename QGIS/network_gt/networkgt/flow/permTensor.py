@@ -162,8 +162,8 @@ class permTensor(QgsProcessingAlgorithm):
             else:
                 geomF = geom.asMultiPolyline()
 
-            x,y = [],[]
-            for part in geomF: #Calculate Orientation
+            a,tL = 0,0
+            for part in geom:
                 startx = None
                 for point in part:
                     if startx == None:
@@ -173,23 +173,18 @@ class permTensor(QgsProcessingAlgorithm):
 
                     dx = endx - startx
                     dy =  endy - starty
+
+                    l = math.sqrt((dx**2)+(dy**2))
                     angle = math.degrees(math.atan2(dy,dx))
                     bearing = (90.0 - angle) % 360
-                    l = math.sqrt((dx**2)+(dy**2))
-                    vX = (2*math.cos(math.radians(bearing))*l)/2*l
-                    vY = (2*math.sin(math.radians(bearing))*l)/2*l
-                    x.append(vX)
-                    y.append(vY)
+                    a += bearing*l
+                    tL += l
+                    startx,starty = endx,endy
 
-                    startx,starty=endx,endy
+            mean = np.around(a/tL,decimals=4)
 
-            v1 = np.mean(x)
-            v2 = np.mean(y)
-
-            if v2 < 0:
-                a = 180 - math.fabs(np.around(math.degrees(math.atan2(v2,v1)),decimals=4))
-            else:
-                a = np.around(math.degrees(math.atan2(v2,v1)),decimals = 4)
+            if mean > 180:
+                mean = np.around(mean-180,decimals=4)
 
             bLen = geom.length()
             if tF:
