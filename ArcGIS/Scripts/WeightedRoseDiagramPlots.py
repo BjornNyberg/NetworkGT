@@ -20,14 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
 
 import  os,arcpy,math,csv
-import subprocess
+import subprocess,tempfile
 def main (infc,bins,field,grp):
 
     fname = os.path.join(os.path.dirname(os.path.realpath(__file__)),'WeightedRosePlotData.py')
     outDir = os.path.join(tempfile.gettempdir(),'NetworkGT')
     if not os.path.exists(outDir):
         os.mkdir(outDir)
-    temp_csv = os.path.join(outDir,'temp__wr.csv') 
+    temp_csv = os.path.join(outDir,'temp__wr.csv')
     python_executer = r"C:\Python27\ArcGISx6410.6\python.exe"
 
     data = {}
