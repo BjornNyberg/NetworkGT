@@ -1,5 +1,5 @@
 #==================================
-#Author Bjorn Burr Nyberg 
+#Author Bjorn Burr Nyberg
 #University of Bergen
 #Contact bjorn.nyberg@uib.no
 #Copyright 2016
@@ -19,21 +19,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
 
-import  os,arcpy, subprocess,sys
+import  os,arcpy, subprocess,sys,tempfile
 
 def main (infc,field,fields):
-    
+
     fname = os.path.join(os.path.dirname(os.path.realpath(__file__)),'LineFrequencyPlotData.py')
-    temp_csv = os.path.join(os.path.dirname(os.path.realpath(__file__)),'temp_csv.csv')
+    outDir = os.path.join(tempfile.gettempdir(),'NetworkGT')
+    if not os.path.exists(outDir):
+        os.mkdir(outDir)
+    temp_csv = os.path.join(outDir,'temp_csv.csv')
     python_executer = r"C:\Python27\ArcGISx6410.6\python.exe"
 
     if not fields:
         fields = []
     else:
         fields = [fields]
- 
+
     curfields = [f.name for f in arcpy.ListFields(infc)]
-    
+
     if 'Distance' not in curfields or 'Sample_No_' not in curfields:
         arcpy.AddError("Run Line Sampling tool prior to plotting")
         sys.exit()
@@ -59,12 +62,11 @@ def main (infc,field,fields):
     DETACHED_PROCESS = 0x00000008
     P=subprocess.Popen(expression, shell=False, stdin=None, stdout=None, stderr=None, close_fds=True,creationflags=DETACHED_PROCESS)
     #os.system(expression)
-if __name__ == "__main__":        
+if __name__ == "__main__":
     ###Inputs###
-        
+
     infc = arcpy.GetParameterAsText(0)
     field = arcpy.GetParameterAsText(1)
     fields = arcpy.GetParameterAsText(2)
 
     main(infc,field,fields)
-
