@@ -1,5 +1,5 @@
 #==================================
-#Author Bjorn Burr Nyberg 
+#Author Bjorn Burr Nyberg
 #University of Bergen
 #Contact bjorn.nyberg@uib.no
 #Copyright 2016
@@ -19,10 +19,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
 
-import  os,arcpy,math,csv
+import  os,arcpy,math
 
 def main (infc,bins):
-	
+
     bins = eval('['+ bins + ']')
 
     for bin in bins:
@@ -41,9 +41,9 @@ def main (infc,bins):
 
 
     with arcpy.da.UpdateCursor(infc, ['Shape@','Sets','Orient']) as cursor:
-	
+
         for row in cursor:
-        
+
             sx,sy = row[0].firstPoint.X,row[0].firstPoint.Y
             ex,ey = row[0].lastPoint.X,row[0].lastPoint.Y
 
@@ -65,20 +65,19 @@ def main (infc,bins):
         	        break
 
                 elif Bearing > bin[0] and Bearing <= bin[1]:
-        	    Value = enum 
+        	    Value = enum
         	    break
-	    
+
 	    row[1] = Value
    	    row[2] = round(Bearing,2)
-	
+
 	    cursor.updateRow(row)
 
 
-if __name__ == "__main__":        
+if __name__ == "__main__":
     ###Inputs###
-        
+
     infc = arcpy.GetParameterAsText(0)
     bins = arcpy.GetParameterAsText(1)
 
     main(infc,bins)
-

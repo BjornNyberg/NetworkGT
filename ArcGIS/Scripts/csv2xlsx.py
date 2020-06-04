@@ -1,5 +1,5 @@
 #==================================
-#Author Bjorn Burr Nyberg 
+#Author Bjorn Burr Nyberg
 #University of Bergen
 #Contact bjorn.nyberg@uib.no
 #Copyright 2016
@@ -24,15 +24,15 @@ import pandas as pd
 
 def main(inFC,inFC2,inFC3,output):
     try:
-     
+
         df = pd.read_csv(inFC,header=None,sep=':')
-    
+
         df.rename(columns={0:'Sample No.',1:'Class'},inplace=True)
 
         df['Nodes'] = 0
 
         df = df[['Sample No.','Class','Nodes']].groupby(['Sample No.','Class']).count().unstack(level=1)
-     
+
         df.fillna(0,inplace=True)
         df.columns = df.columns.droplevel()
 
@@ -42,7 +42,7 @@ def main(inFC,inFC2,inFC3,output):
             if column not in df:
                 df[column] = 0.0
 
-        if 'Error' in df:  
+        if 'Error' in df:
             del df['Error']
 
         df['No. Nodes'] = df.X + df.Y + df.I
@@ -55,7 +55,7 @@ def main(inFC,inFC2,inFC3,output):
         df2.rename(columns={0:'Sample No.',1:'Branches',2:'Connection',3:'Length'},inplace=True)
 
         df3 = df2[['Sample No.','Branches','Connection']].groupby(['Sample No.','Connection']).sum().unstack(level=1)
-        
+
         df3.fillna(0.0,inplace=True)
 
         df3.columns = df3.columns.droplevel()
@@ -70,7 +70,7 @@ def main(inFC,inFC2,inFC3,output):
         for column in delete_columns:
             if column in df3:
                 del df3[column]
-        
+
         df3['No. Branches'] = df3['C - C'] + df3['C - I'] + df3['I - I'] + df3['C - U'] + df3['I - U'] + df3['U - U']
 
         df2 = df2[['Sample No.','Length','Connection']].groupby(['Sample No.','Connection']).sum().unstack(level=1)
@@ -80,17 +80,17 @@ def main(inFC,inFC2,inFC3,output):
         for column in branch_columns:
             if column not in df2:
                 df2[column] = 0.0
-                
+
         for column in delete_columns:
             if column in df2:
                 del df2[column]
 
         df2['Total Trace Length'] = df2['C - C'] + df2['C - I'] + df2['I - I'] + df2['C - U'] + df2['I - U'] + df2['U - U']
-        
+
         df4=pd.read_csv(inFC3,header=None,sep=':',index_col=0)
         df4.rename(columns={1:'Circumference',2:'Area'},inplace=True)
         df4.index.rename('Sample No.', inplace=True)
-        
+
         df['Average Line Length'] = df2['Total Trace Length'] / df['No. Lines']
         df['Average Branch Length'] = df2['Total Trace Length'] / df['No. Branches']
         df['Connect/Branch'] = ((3.0*df.Y) + (4.0*df.X)) / df['No. Branches']
@@ -111,28 +111,28 @@ def main(inFC,inFC2,inFC3,output):
 
         df.ix[df.a==0.0,'1D Intensity'] = (df['E'] /(2.0*numpy.pi*r)) *(numpy.pi/2.0)
         del df['a']
-        
+
         df['2D Intensity'] =  df2['Total Trace Length'] / df4['Area']
         df['Dimensionless Intensity'] = df['2D Intensity'] * df['Average Branch Length']
-        
+
         writer = pd.ExcelWriter(output, engine='xlsxwriter')
-        
+
         df = pd.concat([df4,df,df3,df2],axis=1)
 
         df = df[numpy.isfinite(df['No. Nodes'])]
         df.replace(numpy.inf, 0.0,inplace=True)
         df.replace(numpy.nan, 0.0,inplace=True)
         df = df.round(5)
-        
+
         df.to_excel(writer,'Data') #Format Excel
         workbook = writer.book
         worksheet = writer.sheets['Data']
         format1 = workbook.add_format({'num_format': '0.00','bg_color':'87ceeb','border':1,'border_color':'696969'})
-        format1_2 = workbook.add_format({'num_format': '0.00','bg_color':'6095DA','border':1,'border_color':'696969'}) 
+        format1_2 = workbook.add_format({'num_format': '0.00','bg_color':'6095DA','border':1,'border_color':'696969'})
         format2 = workbook.add_format({'num_format': '0.00','bg_color':'BEF781','border':1,'border_color':'696969'})
         format2_2 = workbook.add_format({'num_format': '0.00','bg_color':'01DF74','border':1,'border_color':'696969'})
         format3 = workbook.add_format({'num_format': '0.00'})
-        
+
         worksheet.set_column('A:C',16,format3)
         worksheet.set_column('D:I',21,format1)
         worksheet.set_column('J:V',21,format1_2)
@@ -143,21 +143,21 @@ def main(inFC,inFC2,inFC3,output):
         for n in range(100):
             worksheet.set_row(count,15,format3)
             count += 1
-                               
+
         writer.save()
 
         os.remove(inFC)
         os.remove(inFC2)
         os.remove(inFC3)
 
-                
+
     except Exception,e:
         print e
-        time.sleep(10)
-            
+        time.sleep(5)
+
 
 if __name__ == "__main__":
-    
+
     try:
         inFC = sys.argv[1]
         inFC2 = sys.argv[2]
@@ -165,7 +165,7 @@ if __name__ == "__main__":
         output = sys.argv[4]
 
         main(inFC,inFC2,inFC3,output)
-        
+
     except Exception,e:
         print '%s e'%(e)
         time.sleep(10)

@@ -27,26 +27,25 @@ def main (infc,sampling,mask,outfc,trim):
     try:
 
 
-	if 'shp' in outfc:
-	    arcpy.AddError('Output parameter must be saved in a geodatabase')
-	    sys.exit()
+        if 'shp' in outfc:
+    	    arcpy.AddError('Output parameter must be saved in a geodatabase')
+    	    sys.exit()
 
 
         dname = os.path.dirname(outfc)
         fname = os.path.basename(outfc)
 
-	if mask:
-
+        if mask:
             arcpy.Intersect_analysis([sampling,mask], "in_memory\\lines", "ONLY_FID", "", "")
             arcpy.MultipartToSinglepart_management("in_memory\\lines","in_memory\\lines_sp")
-	    sampling = "in_memory\\lines_sp"
+            sampling = "in_memory\\lines_sp"
 
-            dfields = []
-            for field in arcpy.ListFields(sampling):
-                if not field.required:
-                    dfields.append(field.name)
+        dfields = []
+        for field in arcpy.ListFields(sampling):
+            if not field.required:
+                dfields.append(field.name)
 
-            arcpy.DeleteField_management(sampling,dfields)
+        arcpy.DeleteField_management(sampling,dfields)
 
         curfields = [f.name for f in arcpy.ListFields(sampling)]
         

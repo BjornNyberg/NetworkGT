@@ -1,5 +1,5 @@
 #==================================
-#Author Bjorn Burr Nyberg 
+#Author Bjorn Burr Nyberg
 #University of Bergen
 #Contact bjorn.nyberg@uib.no
 #Copyright 2016
@@ -29,50 +29,64 @@ python_exe = os.path.join(dirname[0],folder,'python.exe')
 
 modules = ['pip','python-ternary==1.0.4','scipy==1.0.1','pandas==0.23.3','networkx==1.8','xlsxwriter==1.0.4','numpy==1.14.2']
 
+try:
+    is_admin = os.getuid() == 0
+except AttributeError:
+    import ctypes
+    is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+
 for module in modules:
     try:
-        subprocess.check_call([python_exe,'-m', 'pip', 'install','--upgrade', module])
-    except Exception,e:
-        print e
+        if is_admin:
+            status = subprocess.check_call([python_exe,'-m', 'pip', 'install', module, '--upgrade'])
+        else:
+            status = subprocess.check_call([python_exe,'-m', 'pip', 'install', module, '--upgrade','--user'])
+    except Exception:
+        feedback.reportError(QCoreApplication.translate('Warning','Failed to install %s - consider installing manually'%(module)))
         continue
-     
+
 def main(python_exe):
+    try:
+        is_admin = os.getuid() == 0
+    except AttributeError:
+        import ctypes
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
 
     files = ['Histogram.py','WeightedRoseDiagramPlots.py','LineFrequencyPlot.py','DistributionAnalysis.py','PlotTopology.py','TopologyParameters.py']
     try:
         python_exe = sys.executable.replace('w','')
         for module in modules:
             try:
-                subprocess.check_call([python_exe,'-m', 'pip', 'install','--upgrade', module])
-            except Exception,e:
-                print e
+                if is_admin:
+                    status = subprocess.check_call([python_exe,'-m', 'pip', 'install', module, '--upgrade'])
+                else:
+                    status = subprocess.check_call([python_exe,'-m', 'pip', 'install', module, '--upgrade','--user'])
+            except Exception:
+                feedback.reportError(QCoreApplication.translate('Warning','Failed to install %s - consider installing manually'%(module)))
                 continue
 
         dirname = os.path.split(os.path.dirname(os.path.realpath('__file__')))
-        
+
         for fname in files:
 
             fname_in = os.path.join(dirname[0],'Scripts',fname)
             fname_out = os.path.join(dirname[0],'Scripts','temp_%s'%(fname))
-            
+
             with open(fname_in, 'r') as input_file, open(fname_out, 'w') as output_file:
                 for line in input_file:
                     if 'python_executer =' in line:
                         spaces = line.partition("p")[0]
                         new_line = spaces + 'python_executer = r"%s"\n'%(python_exe)
-                        output_file.write(new_line)          
+                        output_file.write(new_line)
                     else:
                         output_file.write(line)
-                        
+
             copyfile(fname_out,fname_in)
             os.remove(fname_out)
 
         print 'Finished'
     except Exception,e:
         print e
-        
+
 if __name__ == "__main__":
-
-    
     main(sys.executable)
-
