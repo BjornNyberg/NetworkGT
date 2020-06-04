@@ -42,7 +42,7 @@ for module in modules:
         else:
             status = subprocess.check_call([python_exe,'-m', 'pip', 'install', module, '--upgrade','--user'])
     except Exception:
-        feedback.reportError(QCoreApplication.translate('Warning','Failed to install %s - consider installing manually'%(module)))
+        print 'Failed to install %s - consider installing manually'%(module)
         continue
 
 def main(python_exe):
@@ -62,7 +62,7 @@ def main(python_exe):
                 else:
                     status = subprocess.check_call([python_exe,'-m', 'pip', 'install', module, '--upgrade','--user'])
             except Exception:
-                feedback.reportError(QCoreApplication.translate('Warning','Failed to install %s - consider installing manually'%(module)))
+                print 'Failed to install %s - consider installing manually'%(module)
                 continue
 
         dirname = os.path.split(os.path.dirname(os.path.realpath('__file__')))
