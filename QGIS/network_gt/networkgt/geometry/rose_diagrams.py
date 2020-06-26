@@ -88,7 +88,7 @@ class RoseDiagrams(QgsProcessingAlgorithm):
             import plotly
             import plotly.plotly as py
             import plotly.graph_objs as go
-        except Exception:
+        except Exception as e:
             feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
             feedback.reportError(QCoreApplication.translate('Error',' '))
             feedback.reportError(QCoreApplication.translate('Error','Error loading modules - please install the necessary dependencies'))
