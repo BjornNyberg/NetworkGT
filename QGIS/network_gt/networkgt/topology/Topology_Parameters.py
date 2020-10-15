@@ -11,7 +11,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
-import os, warnings,tempfile,string,random
+import os, warnings
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 
 from qgis.core import *
@@ -24,7 +24,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
     Nodes = 'Nodes'
     Branches = 'Branches'
     TP = "Topology Parameters"
-    Export = 'Export'
+    Plot = 'Plot'
 
     def __init__(self):
         super().__init__()
@@ -74,12 +74,12 @@ class TopologyParameters(QgsProcessingAlgorithm):
             self.Sample_Area,
             self.tr("Sample Areas"),
             [QgsProcessing.TypeVectorPolygon]))
-        self.addParameter(QgsProcessingParameterBoolean(self.Export,
-                    self.tr("Export Ternary Plot"),False))
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.TP,
             self.tr("Topology Parameters"),
             QgsProcessing.TypeVectorPolygon))
+        self.addParameter(QgsProcessingParameterBoolean(self.Plot,
+                    self.tr("Plot"),False))
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -92,11 +92,9 @@ class TopologyParameters(QgsProcessingAlgorithm):
             feedback.reportError(QCoreApplication.translate('Error','Error loading modules - please install the necessary dependencies'))
             return {}
 
-        plot = True
+        plot = parameters[self.Plot]
 
         try:
-            import plotly
-            import plotly.plotly as py
             import plotly.graph_objs as go
         except Exception:
             feedback.reportError(QCoreApplication.translate('Error','Plotting will be disabled as plotly module did not load - please install the necessary dependencies.'))
@@ -330,28 +328,17 @@ class TopologyParameters(QgsProcessingAlgorithm):
                     ),),}
                 return layout
 
-            fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-            fname2 = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
             ngtPath = 'https://raw.githubusercontent.com/BjornNyberg/NetworkGT/master/Images/NetworkGT_Logo1.png'
-
-            outDir = os.path.join(tempfile.gettempdir(),'Plotly')
-
-            if not os.path.exists(outDir):
-                os.mkdir(outDir)
-
-            fname = os.path.join(outDir,'%s.html'%(fname))
-            fname2 = os.path.join(outDir,'%s.html'%(fname2))
-
             lay = layoutTemp('I','Y','X')
             lay['images']= [dict(source=ngtPath,xref="paper", yref="paper", x=1.0, y=1.0,sizex=0.2, sizey=0.2, xanchor="right", yanchor="bottom")]
 
             fig = go.Figure(data=iyxPlot,layout=lay)
-            plotly.offline.plot(fig,image='svg',filename=fname)
+            fig.show(filename='fig1')
 
             lay = layoutTemp('I - I','C - I','C - C')
             lay['images']= [dict(source=ngtPath,xref="paper", yref="paper", x=1.0, y=1.0,sizex=0.2, sizey=0.2, xanchor="right", yanchor="bottom")]
             fig2 = go.Figure(data=branchPlot,layout=lay)
-            plotly.offline.plot(fig2,image='svg',filename=fname2)
+            fig2.show(filename='fig2')
 
         self.dest_id=dest_id
         return {self.TP:dest_id}
