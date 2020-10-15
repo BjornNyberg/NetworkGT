@@ -1,16 +1,13 @@
 from qgis.PyQt.QtCore import QCoreApplication
-
+import os
 from qgis.core import *
 from qgis.PyQt.QtGui import QIcon
-
-import tempfile,os,string,random
 
 class Histogram(QgsProcessingAlgorithm):
 
     Network = 'Network'
     Group = 'Group Field'
     Weight = 'Weight Field'
-    Export = 'Export SVG File'
     Mode = 'Bar Mode'
     Norm = 'Histogram Normalization'
     Cum = 'Cumulative Histogram'
@@ -64,8 +61,6 @@ class Histogram(QgsProcessingAlgorithm):
 
         self.addParameter(QgsProcessingParameterField(self.Group,
             self.tr('Group Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Any,optional=True))
-        self.addParameter(QgsProcessingParameterBoolean(self.Export,
-                    self.tr("Export SVG File"),False))
 
         param4 = QgsProcessingParameterEnum(self.Mode,
                                 self.tr('Bar Mode'), options=["stack","overlay","group"],defaultValue=0)
@@ -99,8 +94,6 @@ class Histogram(QgsProcessingAlgorithm):
 
         try:
             import plotly.graph_objs as go
-            import plotly.plotly as py
-            import plotly
         except Exception as e:
             feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
             feedback.reportError(QCoreApplication.translate('Error',' '))
@@ -111,7 +104,6 @@ class Histogram(QgsProcessingAlgorithm):
 
         WF = self.parameterAsString(parameters, self.Weight, context)
         G = self.parameterAsString(parameters, self.Group, context)
-        E = parameters[self.Export]
 
         #Settings
 
@@ -186,16 +178,6 @@ class Histogram(QgsProcessingAlgorithm):
             layout = go.Layout(images=[dict(source=ngtPath,xref="paper", yref="paper", x=1.0, y=1.0,sizex=0.2, sizey=0.2, xanchor="right", yanchor="bottom")],barmode=mode)
 
         fig = go.Figure(data=traces, layout=layout)
-
-        fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-        outDir = os.path.join(tempfile.gettempdir(),'Plotly')
-        if not os.path.exists(outDir):
-            os.mkdir(outDir)
-        if E:
-            fname = os.path.join(outDir,'%s.svg'%(fname))
-            plotly.offline.plot(fig,image='svg',filename=fname)
-        else:
-            fname = os.path.join(outDir,'%s.html'%(fname))
-            plotly.offline.plot(fig,filename=fname)
+        fig.show()
 
         return {}

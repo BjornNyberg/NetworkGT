@@ -11,7 +11,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
-import  os,math,random,string,tempfile
+import  os,math
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QIcon
@@ -24,7 +24,6 @@ class RoseDiagrams(QgsProcessingAlgorithm):
     Weight = 'Field'
     Group = 'Group'
     SR ='Equal Area'
-    Export = 'Export SVG File'
 
     def __init__(self):
         super().__init__()
@@ -77,18 +76,14 @@ class RoseDiagrams(QgsProcessingAlgorithm):
                                 self.tr('Group Field'), parentLayerParameterName=self.FN, type=QgsProcessingParameterField.Any, optional=True))
         self.addParameter(QgsProcessingParameterBoolean(self.SR,
                     self.tr("Equal Area Rose Diagram"),False))
-        self.addParameter(QgsProcessingParameterBoolean(self.Export,
-                    self.tr("Export SVG File"),False))
 
     def processAlgorithm(self, parameters, context, feedback):
 
         try:
             import pandas as pd
             import numpy as np
-            import plotly
-            import plotly.plotly as py
             import plotly.graph_objs as go
-        except Exception as e:
+        except Exception:
             feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
             feedback.reportError(QCoreApplication.translate('Error',' '))
             feedback.reportError(QCoreApplication.translate('Error','Error loading modules - please install the necessary dependencies'))
@@ -99,7 +94,6 @@ class RoseDiagrams(QgsProcessingAlgorithm):
         G = self.parameterAsString(parameters, self.Group, context)
         bins = parameters[self.Bins]
         SR = parameters[self.SR]
-        E = parameters[self.Export]
 
         feedback.pushInfo(QCoreApplication.translate('RoseDiagram','Reading Data'))
 
@@ -209,16 +203,6 @@ class RoseDiagrams(QgsProcessingAlgorithm):
                 polar=dict(angularaxis=dict(direction="clockwise",tickfont=dict(size=14)),),)
 
         fig = go.Figure(data=final, layout=layout)
-
-        fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-        outDir = os.path.join(tempfile.gettempdir(),'Plotly')
-        if not os.path.exists(outDir):
-            os.mkdir(outDir)
-        if E:
-            fname = os.path.join(outDir,'%s.svg'%(fname))
-            plotly.offline.plot(fig,image='svg',filename=fname)
-        else:
-            fname = os.path.join(outDir,'%s.html'%(fname))
-            plotly.offline.plot(fig,filename=fname)
+        fig.show()
 
         return {}

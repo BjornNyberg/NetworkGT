@@ -107,8 +107,6 @@ class Tortuosity(QgsProcessingAlgorithm):
         plot = True
 
         try:
-            import plotly
-            import plotly.plotly as py
             import plotly.graph_objs as go
         except Exception:
             feedback.reportError(QCoreApplication.translate('Error','Plotting will be disabled as plotly module did not load - please install the necessary dependencies. '))
@@ -552,13 +550,6 @@ class Tortuosity(QgsProcessingAlgorithm):
             )
 
             fig = dict(data=traces, layout=layout)
-
-            fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-            outDir = os.path.join(tempfile.gettempdir(),'Plotly')
-            if not os.path.exists(outDir):
-                os.mkdir(outDir)
-
-            fname = os.path.join(outDir,'%s.html'%(fname))
-            plotly.offline.plot(fig,filename=fname)
+            fig.show()
 
         return {self.Tortuosity:dest_id}

@@ -11,7 +11,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
-import os, tempfile
+import os
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsPointXY,QgsSpatialIndex,QgsProcessingParameterBoolean, QgsProcessingParameterFolderDestination, QgsProcessingParameterField, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
@@ -24,7 +24,6 @@ class LineFrequency(QgsProcessingAlgorithm):
     Group = "Groupby Field"
     Norm = 'Normalize'
     Combine = 'Combine Graphs'
-    Export = 'Export SVG File'
 
     def __init__(self):
         super().__init__()
@@ -79,8 +78,6 @@ class LineFrequency(QgsProcessingAlgorithm):
                     self.tr("Normalize"),False))
         self.addParameter(QgsProcessingParameterBoolean(self.Combine,
                     self.tr("Combine Plots"),False))
-        self.addParameter(QgsProcessingParameterBoolean(self.Export,
-                    self.tr("Export SVG File"),False))
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -90,7 +87,6 @@ class LineFrequency(QgsProcessingAlgorithm):
             import networkx as nx
             import numpy as np
             import plotly.graph_objs as go
-            import plotly
             import pandas as pd
             from math import ceil
 
@@ -102,7 +98,6 @@ class LineFrequency(QgsProcessingAlgorithm):
 
         LG = self.parameterAsSource(parameters, self.LG, context)
         Network = self.parameterAsSource(parameters, self.Network, context)
-        E = parameters[self.Export]
         Norm = parameters[self.Norm]
         Combine = parameters[self.Combine]
 
@@ -477,16 +472,6 @@ class LineFrequency(QgsProcessingAlgorithm):
                              fill = dict(color=['rgb(235, 193, 238)', 'rgba(228, 222, 249, 0.65)']))))
 
             fig = dict(data=traces, layout=layout)
-
-            fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-            outDir = os.path.join(tempfile.gettempdir(),'Plotly')
-            if not os.path.exists(outDir):
-                os.mkdir(outDir)
-            if E:
-                fname = os.path.join(outDir,'%s.svg'%(fname))
-                plotly.offline.plot(fig,image='svg',filename=fname)
-            else:
-                fname = os.path.join(outDir,'%s.html'%(fname))
-                plotly.offline.plot(fig,filename=fname)
+            fig.show()
 
         return {}

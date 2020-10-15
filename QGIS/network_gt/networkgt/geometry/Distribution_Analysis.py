@@ -1,4 +1,4 @@
-import os,string,random, tempfile
+import os
 from qgis.PyQt.QtCore import QCoreApplication
 
 from qgis.core import (edit,QgsField, QgsFeature, QgsPointXY,QgsProcessingParameterBoolean, QgsProcessingParameterNumber,
@@ -11,7 +11,6 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
 
     Network = 'Network'
     Length = 'Weight'
-    Export = 'Export SVG File'
 
     def __init__(self):
         super().__init__()
@@ -55,8 +54,7 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
             [QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterField(self.Length,
             self.tr('Weight Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric,optional=True))
-        self.addParameter(QgsProcessingParameterBoolean(self.Export,
-                    self.tr("Export SVG File"),False))
+
     def processAlgorithm(self, parameters, context, feedback):
 
         try:
@@ -64,8 +62,6 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
             import numpy as np
             from scipy.stats import norm,lognorm,mstats,kurtosis,skew
             import plotly.graph_objs as go
-            import plotly.plotly as py
-            import plotly
         except Exception as e:
             feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
             feedback.reportError(QCoreApplication.translate('Error',' '))
@@ -74,7 +70,6 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
 
         Network = self.parameterAsLayer(parameters, self.Network, context)
         group = self.parameterAsString(parameters, self.Length, context)
-        E = parameters[self.Export]
 
         SN = []
         LEN = []
@@ -186,15 +181,6 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
             ))
 
         fig = go.Figure(data=[trace2,trace3,trace4,trace5],layout=layout)
-        fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-        outDir = os.path.join(tempfile.gettempdir(),'Plotly')
-        if not os.path.exists(outDir):
-            os.mkdir(outDir)
-        if E:
-            fname = os.path.join(outDir,'%s.svg'%(fname))
-            plotly.offline.plot(fig,image='svg',filename=fname)
-        else:
-            fname = os.path.join(outDir,'%s.html'%(fname))
-            plotly.offline.plot(fig,filename=fname)
+        fig.show()
 
         return {}
