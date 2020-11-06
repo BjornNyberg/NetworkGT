@@ -1,7 +1,7 @@
 # NetworkGT
 The NetworkGT (Network Geometry and Topology) Toolbox is a set of tools designed for the geometric and topological analysis of fracture networks.
 
-The toolbox is available as a plugin for QGIS 3.4 > under the GNU General Public License V3. Please refer to the wiki at https://github.com/BjornNyberg/NetworkGT/wiki for installation and workflow.
+The toolbox is available as a plugin for QGIS 3.4 > under the GNU General Public License V3. Please refer to the [wiki](https://github.com/BjornNyberg/NetworkGT/wiki) for installation, workflow and user guide.
 
 Current version - v0.1 (13.03.2018)
 
