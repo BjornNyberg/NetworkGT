@@ -277,15 +277,20 @@ class TopologyParameters(QgsProcessingAlgorithm):
         for enum,feature in enumerate(SA.getFeatures(QgsFeatureRequest())):
             if stotal != -1:
                 feedback.setProgress(int(enum*stotal))
-            if feature['Sample_No_'] in samples:
+            ID = feature['Sample_No_']
+            if ID in samples:
                 fet.setGeometry(feature.geometry())
-                rows = [feature['Sample_No_']]
+                rows = [ID]
                 if field_check != -1:
                     rows.append(feature['Radius'])
                     rows.append(feature['Rotation'])
-                rows.extend(df.ix[feature['Sample_No_']].tolist())
-                fet.setAttributes(rows)
-                writer.addFeature(fet,QgsFeatureSink.FastInsert)
+                try:
+                    rows.extend(df.ix[ID].tolist())
+                    fet.setAttributes(rows)
+                    writer.addFeature(fet,QgsFeatureSink.FastInsert)
+                except Exception:
+                    feedback.reportError(QCoreApplication.translate('Error','Could not find Sample No %s - skipping' %(ID)))
+                    continue
 
         if plot:
             ID = ['Sample No. %s' %(s) for s in samples]

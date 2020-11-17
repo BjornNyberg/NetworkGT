@@ -63,7 +63,7 @@ class Aperture(QgsProcessingAlgorithm):
             [QgsProcessing.TypeVectorLine]))
 
         self.addParameter(QgsProcessingParameterEnum(self.Method,
-                                self.tr('Aperture Field for Transmisivity'), options=[self.tr("Average"),self.tr("Max"),self.tr("Constant")],defaultValue=0))
+                                self.tr('Aperture Field for Transmisivity'), options=[self.tr("Average"),self.tr("Max")],defaultValue=0))
 
         self.addParameter(QgsProcessingParameterField(self.Group,
                                 self.tr('Group Fracture Length By'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Any, optional=True))
@@ -104,9 +104,6 @@ class Aperture(QgsProcessingAlgorithm):
         if const > 0:
             new_fields = ['maxA','avgA','Aperture','IntrinsicP','Transmisiv']
         else:
-            if const == 0 and m == 2:
-                feedback.reportError(QCoreApplication.translate('Output','Can not calculate transmisivity based on a constant aperture of 0'))
-                return {}
             new_fields = ['maxA','avgA','IntrinsicP','Transmisiv']
 
         if grp:

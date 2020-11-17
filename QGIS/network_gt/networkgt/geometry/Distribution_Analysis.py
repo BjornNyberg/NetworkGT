@@ -28,7 +28,7 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
         return self.tr("3. Geometry")
 
     def shortHelpString(self):
-        return self.tr("Plots cumulative line frequency against fracture size (e.g. length, aperture, displacement). Several line plots are produced with variable axis scales to help the user interpet the frequency-size distribution (e.g. negative exponential, power-law, normal, log-normal). \n The input data needs to be a fracture network linestring and the various line plots are externally output in a browser window. Additionally a number of statistics (max, min, mean, standard deviation, coefficent of variance etc.) are calculated and displayed within the tool log.  \n N.B. The network linestring must have an associated size attribute field (e.g. length, aperture, displacement).\n Please refer to the help button for more information.")
+        return self.tr("Plots cumulative line frequency against fracture size (e.g. length, aperture, displacement). Several line plots are produced with variable axis scales to help the user interpet the frequency-size distribution (e.g. negative exponential, power-law, normal, log-normal). \n The input data needs to be a fracture network linestring and the various line plots are externally output in a browser window. Additionally a number of statistics (max, min, mean, standard deviation, coefficent of variance etc.) are calculated and displayed within the tool log.  \n N.B. The weight field will default to fracture length if not supplied.\n Please refer to the help button for more information.")
 
     def groupId(self):
         return "3. Geometry"

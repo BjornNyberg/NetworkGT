@@ -31,7 +31,7 @@ class Histogram(QgsProcessingAlgorithm):
         return self.tr("3. Geometry")
 
     def shortHelpString(self):
-        return self.tr("Plots histogram plots of fracture size attributes (e.g. length, aperture, displacement). As well as choosing which attribute to plot, the user has the option to group the data (e.g. by orientation set number) and produce various histogram plots to help the user interpet and compare frequency-size distributions. \n The input data needs to be a fracture network linestring and the histogram plots are output in an external browser window. \n N.B. The network linestring must have an associated size attribute field (e.g. length, aperture, displacement).\n Please refer to the help button for more information.")
+        return self.tr("Plots histogram plots of fracture size attributes (e.g. length, aperture, displacement). As well as choosing which attribute to plot, the user has the option to group the data (e.g. by orientation set number) and produce various histogram plots to help the user interpet and compare frequency-size distributions. \n The input data needs to be a fracture network linestring and the histogram plots are output in an external browser window. \n N.B. The weight field will default to fracture length if not supplied.\n Please refer to the help button for more information.")
 
     def groupId(self):
         return "3. Geometry"
