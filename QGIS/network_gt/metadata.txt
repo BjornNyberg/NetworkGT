@@ -29,7 +29,7 @@ homepage=https://github.com/BjornNyberg/NetworkGT/wiki
 category=Analysis
 icon=icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
