@@ -24,6 +24,7 @@ class RoseDiagrams(QgsProcessingAlgorithm):
     Weight = 'Field'
     Group = 'Group'
     SR ='Equal Area'
+    P ='Percentage'
 
     def __init__(self):
         super().__init__()
@@ -76,6 +77,8 @@ class RoseDiagrams(QgsProcessingAlgorithm):
                                 self.tr('Group Field'), parentLayerParameterName=self.FN, type=QgsProcessingParameterField.Any, optional=True))
         self.addParameter(QgsProcessingParameterBoolean(self.SR,
                     self.tr("Equal Area Rose Diagram"),False))
+        self.addParameter(QgsProcessingParameterBoolean(self.P,
+                    self.tr("Percentage"),False))
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -94,6 +97,7 @@ class RoseDiagrams(QgsProcessingAlgorithm):
         G = self.parameterAsString(parameters, self.Group, context)
         bins = parameters[self.Bins]
         SR = parameters[self.SR]
+        P = parameters[self.P]
 
         feedback.pushInfo(QCoreApplication.translate('RoseDiagram','Reading Data'))
 
@@ -188,6 +192,10 @@ class RoseDiagrams(QgsProcessingAlgorithm):
             count = list(counts.values())
             if SR:
                 count = [math.sqrt(c) for c in count]
+
+            if P:
+                total = float(sum(count))
+                count = [(c/total)*100 for c in count]
 
             binsV = [k - (bins/2.0) for k in counts.keys()]
 
