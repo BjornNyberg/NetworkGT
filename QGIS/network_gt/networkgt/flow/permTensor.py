@@ -163,7 +163,7 @@ class permTensor(QgsProcessingAlgorithm):
                 geomF = geom.asMultiPolyline()
 
             a,tL = 0,0
-            for part in geom:
+            for part in geomF:
                 startx = None
                 for point in part:
                     if startx == None:
