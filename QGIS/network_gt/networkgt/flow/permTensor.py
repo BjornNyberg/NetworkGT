@@ -106,14 +106,6 @@ class permTensor(QgsProcessingAlgorithm):
         mP = parameters[self.mp]
         hcB = parameters[self.hC]
 
-        try:
-            import plotly
-            import plotly.plotly as py
-            import plotly.graph_objs as go
-        except Exception:
-            feedback.reportError(QCoreApplication.translate('Error','Plotting will be disabled as plotly module did not load - please install the necessary dependencies.'))
-            Plot = False
-
         P = 10
 
         pr = TP.dataProvider()
