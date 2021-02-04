@@ -96,9 +96,9 @@ class Flow2D(QgsProcessingAlgorithm):
                               self.tr('Viscosity (Pa.s)'), QgsProcessingParameterNumber.Double,0.001, minValue=0.000001)
 
         param6 = QgsProcessingParameterNumber(self.NxV,
-                                self.tr('Number of Rows'), QgsProcessingParameterNumber.Integer,None, minValue = 1,optional=True)
+                                self.tr('Number of Columns'), QgsProcessingParameterNumber.Integer,None, minValue = 1,optional=True)
         param7 = QgsProcessingParameterNumber(self.NyV,
-                                              self.tr('Number of Columns'), QgsProcessingParameterNumber.Integer, None,
+                                              self.tr('Number of Rows'), QgsProcessingParameterNumber.Integer, None,
                                               minValue=1,optional=True)
         param8 = QgsProcessingParameterNumber(self.dWidthV,
                                  self.tr('Domain Width'), QgsProcessingParameterNumber.Double,None, minValue=0.00001,optional=True)
