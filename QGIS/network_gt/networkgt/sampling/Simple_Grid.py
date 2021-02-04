@@ -93,7 +93,7 @@ class ContourGrid(QgsProcessingAlgorithm):
         radius = parameters[self.Radius]
 
         if rotation == 0.0:
-            r = 0.0001
+            r = 0.000001
         else:
             r = rotation
 
