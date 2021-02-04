@@ -277,7 +277,7 @@ class Flow2D(QgsProcessingAlgorithm):
         # Read the grid
         gb = read_cart_grid(Nx,Ny,dWidth,dHeight)
 
-        feedback.pushInfo(QCoreApplication.translate('Output', 'Constructing grid with %s rows, %s columns and a domain size of %s x %s (width x height).' % (Nx,Ny,dWidth,dHeight)))
+        feedback.pushInfo(QCoreApplication.translate('Output', 'Constructing grid with %s rows, %s columns and a domain size (width x height) of %s x %s.' % (Ny,Nx,dWidth,dHeight)))
 
         # mask that map the permeability from qgis to pp, and vice-versa
         mask, inv_mask = argsort_cart_grid(Nx, Ny)
