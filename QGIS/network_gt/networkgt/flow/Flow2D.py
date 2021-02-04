@@ -30,6 +30,10 @@ class Flow2D(QgsProcessingAlgorithm):
     lowPressure ='LP'
     highPressure = 'HP'
     mu = 'mu'
+    NxV = 'NxV'
+    NyV = 'NyV'
+    dWidthV = 'dWidthV'
+    dHeightV = 'dHeightV'
 
     def __init__(self):
         super().__init__()
@@ -91,17 +95,35 @@ class Flow2D(QgsProcessingAlgorithm):
         param5 = QgsProcessingParameterNumber(self.mu,
                               self.tr('Viscosity (Pa.s)'), QgsProcessingParameterNumber.Double,0.001, minValue=0.000001)
 
+        param6 = QgsProcessingParameterNumber(self.NxV,
+                                self.tr('Number of Rows'), QgsProcessingParameterNumber.Integer,None, minValue = 1,optional=True)
+        param7 = QgsProcessingParameterNumber(self.NyV,
+                                              self.tr('Number of Columns'), QgsProcessingParameterNumber.Integer, None,
+                                              minValue=1,optional=True)
+        param8 = QgsProcessingParameterNumber(self.dWidthV,
+                                 self.tr('Domain Width'), QgsProcessingParameterNumber.Double,None, minValue=0.00001,optional=True)
+        param9 = QgsProcessingParameterNumber(self.dHeightV,
+                              self.tr('Domain Height'), QgsProcessingParameterNumber.Double,None, minValue=0.000001,optional=True)
+
         param1.setFlags(param1.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         param2.setFlags(param2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         param3.setFlags(param3.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         param4.setFlags(param4.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         param5.setFlags(param5.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        param6.setFlags(param6.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        param7.setFlags(param7.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        param8.setFlags(param8.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        param9.setFlags(param9.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
 
         self.addParameter(param1)
         self.addParameter(param2)
         self.addParameter(param5)
         self.addParameter(param3)
         self.addParameter(param4)
+        self.addParameter(param6)
+        self.addParameter(param7)
+        self.addParameter(param8)
+        self.addParameter(param9)
 
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.outGrid,
@@ -136,6 +158,10 @@ class Flow2D(QgsProcessingAlgorithm):
         lP =  parameters[self.lowPressure] * pp.PASCAL
         hP =  parameters[self.highPressure] * pp.PASCAL
         mu = 1e-3 * pp.PASCAL * pp.SECOND #Define here the dynamic viscosity of the liquid phase in [Pa s]
+        Nx = self.parameterAsInt(parameters, self.NxV, context)
+        Ny = self.parameterAsInt(parameters, self.NyV, context)
+        dWidth = self.parameterAsInt(parameters, self.dWidthV, context)
+        dHeight = self.parameterAsInt(parameters, self.dHeightV, context)
 
         if dV == 0:
             direction = "left_to_right"
@@ -213,11 +239,11 @@ class Flow2D(QgsProcessingAlgorithm):
             if type(xxV) != float or type(xyV) != float or type(yyV) != float:
                 feedback.reportError(QCoreApplication.translate('Info','Warning: Grid sample no. %s contains non-float values for pereambility measurements' %(FID)))
                 W = True
-
-            if extentGeom == None:
-                extentGeom = feature.geometry()
-            else:
-                extentGeom = extentGeom.combine(feature.geometry())
+            if dWidth == 0 or dHeight == 0:
+                if extentGeom == None:
+                    extentGeom = feature.geometry()
+                else:
+                    extentGeom = extentGeom.combine(feature.geometry())
         if W:
             feedback.reportError(QCoreApplication.translate('Info','Invalid permeability measurements created an empty 2D flow grid!'))
             return {}
@@ -228,13 +254,20 @@ class Flow2D(QgsProcessingAlgorithm):
 
         P = 10 #Precision
         #Read grid geometry
-        geom = feature.geometry().orientedMinimumBoundingBox()
-        featWidth,featHeight = round(geom[3],P),round(geom[4],P) #Grid Width and Height of the first feature
 
-        #extentGeom = QgsGeometry.fromRect(extent)
-        extentGeom = extentGeom.orientedMinimumBoundingBox()
-        dWidth,dHeight = round(extentGeom[3],P),round(extentGeom[4],P) #Domain width and height
-        Ny,Nx = int(dWidth/featWidth),int(dHeight/featHeight)
+        if dWidth == 0 or dHeight == 0:
+            geom = feature.geometry().orientedMinimumBoundingBox()
+            featWidth,featHeight = round(geom[3],P),round(geom[4],P) #Grid Width and Height of the first feature
+            #extentGeom = QgsGeometry.fromRect(extent)
+            extentGeom = extentGeom.orientedMinimumBoundingBox()
+            if dWidth == 0:
+                dWidth = round(extentGeom[3],P)
+            if dHeight == 0:
+                dHeight = round(extentGeom[4],P) #Domain width and height
+        if Ny == 0:
+            Ny = int(dWidth / featWidth)
+        if Nx == 0:
+            Nx = int(dHeight / featHeight)
 
         count = Nx*Ny
         if count != c:
@@ -243,6 +276,8 @@ class Flow2D(QgsProcessingAlgorithm):
 
         # Read the grid
         gb = read_cart_grid(Nx,Ny,dWidth,dHeight)
+
+        feedback.pushInfo(QCoreApplication.translate('Output', 'Constructing grid with %s rows, %s columns and a domain size of %s x %s (width x height).' % (Nx,Ny,dWidth,dHeight)))
 
         # mask that map the permeability from qgis to pp, and vice-versa
         mask, inv_mask = argsort_cart_grid(Nx, Ny)
