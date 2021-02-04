@@ -260,6 +260,7 @@ class Flow2D(QgsProcessingAlgorithm):
             featWidth,featHeight = round(geom[4],P),round(geom[3],P) #Grid Width and Height of the first feature
             #extentGeom = QgsGeometry.fromRect(extent)
             extentGeom = extentGeom.orientedMinimumBoundingBox()
+
             if dWidth == 0:
                 dWidth = round(extentGeom[4],P)
             if dHeight == 0:
@@ -277,7 +278,7 @@ class Flow2D(QgsProcessingAlgorithm):
         # Read the grid
         gb = read_cart_grid(Nx,Ny,dWidth,dHeight)
 
-        feedback.pushInfo(QCoreApplication.translate('Output', 'Constructing grid with %s columns and %s rows a domain size (width x height) of %s x %s.' % (Ny,Nx,dWidth,dHeight)))
+        feedback.pushInfo(QCoreApplication.translate('Output', 'Constructing grid with %s columns and %s rows a domain size (width x height) of %s x %s.' % (Nx,Ny,dWidth,dHeight)))
 
         # mask that map the permeability from qgis to pp, and vice-versa
         mask, inv_mask = argsort_cart_grid(Nx, Ny)
