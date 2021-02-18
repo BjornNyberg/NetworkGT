@@ -106,7 +106,7 @@ class permTensor(QgsProcessingAlgorithm):
         mP = parameters[self.mp]
         hcB = parameters[self.hC]
 
-        P = 10
+        P = 15
 
         pr = TP.dataProvider()
         new_fields = ['Kxx','Kxy','Kyy','K1 Azimuth','K1','K2','K1_K2']
@@ -230,10 +230,12 @@ class permTensor(QgsProcessingAlgorithm):
                     X = feature['X']
 
                     if mpF:
-                        mP = feature[mpF]
-                        if type(mP) != float:
+                        mPv = feature[mpF]
+                        if type(mPv) != float:
                             feedback.reportError(QCoreApplication.translate('Error','Error - Matrix permeability field contains non float values'))
                             return {}
+                    else:
+                        mPv = mP
 
                     if hcB:
                         v1 = 4*X+2*Y
@@ -249,7 +251,7 @@ class permTensor(QgsProcessingAlgorithm):
                                 hC = ((v1/v2)*2.94)-2.13
                                 if hC < 0:
                                     hC = 0
-                                mP = (1-hC)*mP
+                                mPv = (1-hC)*mPv
                     else:
                         hC = 1
 
@@ -257,9 +259,9 @@ class permTensor(QgsProcessingAlgorithm):
                     Ti2v = Ti2[FID]
                     Ti4v = Ti4[FID]
 
-                    Kxx =((hC/Area)*Ti1v)+mP
+                    Kxx =((hC/Area)*Ti1v)+mPv
                     Kxy =(hC/Area)*Ti2v
-                    Kyy =((hC/Area)*Ti4v)+mP
+                    Kyy =((hC/Area)*Ti4v)+mPv
 
                     p = Kyy*Kyy+Kxy*Kxy+Kxy*Kxy+Kxx*Kxx
                     q = Kyy*Kxx-Kxy*Kxy
