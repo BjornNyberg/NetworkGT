@@ -85,7 +85,7 @@ class permTensor(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterField(self.ftField,
                                 self.tr('Transmisivity Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric,optional=True))
         self.addParameter(QgsProcessingParameterBoolean(self.hC,
-                    self.tr("Hydraulic Conductivity"),True))
+                    self.tr("Hydraulic Connectivity"),True))
 
 
     def processAlgorithm(self, parameters, context, feedback):
