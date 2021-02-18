@@ -238,16 +238,18 @@ class permTensor(QgsProcessingAlgorithm):
                     if hcB:
                         v1 = 4*X+2*Y
                         v2 = 4*X+2*Y+I
-                        if v1 == 0:
+                        if feature['Total Trace Length'] == 0:
                             hC = 0
-                        if v1 == 0 and v2 == 0:
-                            hC = 0.81
                         else:
-                            hC = ((v1/v2)*2.94)-2.13
-                            if hC < 0:
+                            if v1 == 0:
                                 hC = 0
-
-                            mP = (1-hC)*mP
+                                if v2 == 0:
+                                    hC = 0.81
+                            else:
+                                hC = ((v1/v2)*2.94)-2.13
+                                if hC < 0:
+                                    hC = 0
+                                mP = (1-hC)*mP
                     else:
                         hC = 1
 
