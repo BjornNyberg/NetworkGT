@@ -73,8 +73,6 @@ class permTensorPlot(QgsProcessingAlgorithm):
         E = parameters[self.export]
 
         try:
-            import plotly
-            import plotly.plotly as py
             import plotly.graph_objs as go
             import numpy as np
         except Exception:
@@ -157,17 +155,6 @@ class permTensorPlot(QgsProcessingAlgorithm):
                   width=650, height=650,)
 
             fig = go.Figure(data=trace, layout=layout)
-
-            fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-            outDir = os.path.join(tempfile.gettempdir(),'Plotly')
-            if not os.path.exists(outDir):
-                os.mkdir(outDir)
-
-            if E:
-                fname = os.path.join(outDir,'%s.svg'%(fname))
-                plotly.offline.plot(fig,image='svg',filename=fname)
-            else:
-                fname = os.path.join(outDir,'%s.html'%(fname))
-                plotly.offline.plot(fig,filename=fname)
+            fig.show()
 
         return {}
