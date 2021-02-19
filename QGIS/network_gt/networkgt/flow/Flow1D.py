@@ -11,7 +11,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
-import time,sys,os,tempfile,string,random,csv, math
+import datetime,sys,os,tempfile,string,random,csv, math
 import processing as st
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import *
@@ -152,7 +152,7 @@ class Flow1D(QgsProcessingAlgorithm):
         layer2 = explode['OUTPUT']
 
         #Create new field to fracture line
-        newFields = ['ID','Pressure','Flux','Azimuth','Tracer','Step','Time']
+        newFields = ['ID','Pressure','Flux','Azimuth','Tracer','StartTime','EndTime']
 
         if layer.fields().indexFromName('Transmisiv') == -1:
             feedback.reportError(QCoreApplication.translate('Error','Please calculate the transmissivity using the Aperture tool or define a new transmissivity field labelled "Transmisiv" in mD.m'))
@@ -164,9 +164,10 @@ class Flow1D(QgsProcessingAlgorithm):
             if field.name() not in newFields:
                 fields.append(QgsField(field.name(),field.type()))
 
-        for field in newFields[:-1]:
+        for field in newFields[:-2]:
             fields.append(QgsField(field,QVariant.Double))
-        fields.append(QgsField('Time',QVariant.String))
+        fields.append(QgsField('StartTime',QVariant.DateTime))
+        fields.append(QgsField('EndTime',QVariant.DateTime))
 
         (writer, dest_id) = self.parameterAsSink(parameters, self.outLine, context,
                                                            fields, QgsWkbTypes.LineString, layer.sourceCrs())
@@ -243,7 +244,6 @@ class Flow1D(QgsProcessingAlgorithm):
         network, mask, pts_shift = read_network(outName, tol=tol)
 
         mesh_args = {"mesh_size_frac": h, "mesh_size_bound": h,'file_name':outDir}
-        start = time.time()
 
         feedback.pushInfo(QCoreApplication.translate('Info','Creating Mesh from %s'%(network)))
 
@@ -272,7 +272,7 @@ class Flow1D(QgsProcessingAlgorithm):
                   "high_value": hP}
 
         flow.set_data(param_flow, bc_flag)
-        #feedback.pushInfo(QCoreApplication.translate('Info',"Time to create the grid bucket " + str(end-start)))
+
         feedback.pushInfo(QCoreApplication.translate('Info','Solving Fluid Flow'))
         flow.solve()
 
@@ -328,14 +328,21 @@ class Flow1D(QgsProcessingAlgorithm):
                 fet.setGeometry(geom)
 
                 if steps > 1:
+
+                    time = datetime.datetime(1, 1, 1, 0, 0, 0)
+                    deltaTime = datetime.timedelta(seconds=endv/steps)
+
                     for time_step, current_time in enumerate(tracer.all_time):
                         var_name = tracer.variable + "_" + str(time_step)
                         tr = d[pp.STATE][var_name]
                         cell_tracer = tr[c]
+                        
                         newRows = rows.copy()
                         newRows.append(float(round(cell_tracer,6)))
-                        newRows.append(float(round(current_time,6)))
-                        newRows.append('%s-1-1'%(1970+time_step))
+                        newRows.append(str(time))
+                        time += deltaTime
+                        newRows.append(str(time))
+
                         fet.setAttributes(newRows)
                         writer.addFeature(fet,QgsFeatureSink.FastInsert)
                 else:

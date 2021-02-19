@@ -14,7 +14,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import *
 from qgis.PyQt.QtGui import QIcon
-import os,sys,collections,math
+import os,sys,collections,math,datetime
 
 class Flow2D(QgsProcessingAlgorithm):
 
@@ -184,16 +184,17 @@ class Flow2D(QgsProcessingAlgorithm):
         if lP > hP:
             feedback.reportError(QCoreApplication.translate('Error','Low pressure value is higher than high pressure value.'))
             return {}
-        newFields = ['Pressure','Flux','Azimuth','Tracer','Step','Time']
+        newFields = ['Pressure','Flux','Azimuth','Tracer','StartTime','EndTime']
 
         fields = QgsFields()
         for field in layer.fields():
             if field.name() not in newFields:
                 fields.append(QgsField(field.name(),field.type()))
 
-        for field in newFields[:-1]:
+        for field in newFields[:-2]:
             fields.append(QgsField(field,QVariant.Double))
-        fields.append(QgsField('Time',QVariant.String))
+        fields.append(QgsField('StartTime',QVariant.DateTime))
+        fields.append(QgsField('EndTime',QVariant.DateTime))
 
         (writer, dest_id) = self.parameterAsSink(parameters, self.outGrid, context,
                                                            fields, QgsWkbTypes.Polygon, layer.sourceCrs())
@@ -360,11 +361,16 @@ class Flow2D(QgsProcessingAlgorithm):
             rows.extend([round(float(p[enum]),P),round(float(v[enum]),P),round(float(aV),2)])
 
             if steps > 1:
+
+                time = datetime.datetime(1, 1, 1, 0, 0, 0)
+                deltaTime = datetime.timedelta(seconds=end/steps)
+
                 for n in range(len(t)):
                     newRows = rows.copy()
                     newRows.append(round(float(t[n][enum]),P))
-                    newRows.append(round(n*(end/steps),P))
-                    newRows.append('%s-1-1'%(1970+n))
+                    newRows.append(str(time))
+                    time += deltaTime
+                    newRows.append(str(time))
 
                     fet.setGeometry(geom)
                     fet.setAttributes(newRows)
