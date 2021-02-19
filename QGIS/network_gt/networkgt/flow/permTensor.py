@@ -57,7 +57,7 @@ class permTensor(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(
             self.Network,
-            self.tr("Network"),
+            self.tr("Branches"),
             [QgsProcessing.TypeVectorLine]))
 
         self.addParameter(QgsProcessingParameterFeatureSource(
