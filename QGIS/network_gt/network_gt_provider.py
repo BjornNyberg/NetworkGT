@@ -37,6 +37,8 @@ from .networkgt.configureNetworkGT import configureNetworkGT
 
 #Sampling Tools
 from .networkgt.sampling.Simple_Grid import ContourGrid
+from .networkgt.sampling.Grid_Calculator import GridCalc
+from .networkgt.sampling.Grid_Statistics import GridStats
 from .networkgt.sampling.Simple_Line_Grid import LineGrid
 
 #Geometry Tools
@@ -121,6 +123,8 @@ class NetworkGTProvider(QgsProcessingProvider):
         self.addAlgorithm(ExtendTrim())
         self.addAlgorithm(Thresholding())
         self.addAlgorithm(SimplifyNetwork())
+        self.addAlgorithm(GridCalc())
+        self.addAlgorithm(GridStats())
 
 
     def id(self):
