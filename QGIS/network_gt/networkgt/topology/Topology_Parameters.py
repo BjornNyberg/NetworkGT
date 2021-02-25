@@ -266,8 +266,10 @@ class TopologyParameters(QgsProcessingAlgorithm):
             fs.append(QgsField('Radius', QVariant.Double))
             fs.append(QgsField('Rotation', QVariant.Double))
 
+        count = 0
         for c in df:
             fs.append(QgsField(c, QVariant.Double))
+            count +=1
 
         (writer, dest_id) = self.parameterAsSink(parameters, self.TP, context,
                                             fs, QgsWkbTypes.Polygon, Nodes.sourceCrs())
@@ -278,12 +280,13 @@ class TopologyParameters(QgsProcessingAlgorithm):
             if stotal != -1:
                 feedback.setProgress(int(enum*stotal))
             ID = feature['Sample_No_']
+            fet.setGeometry(feature.geometry())
+            rows = [ID]
+
+            if field_check != -1:
+                rows.append(feature['Radius'])
+                rows.append(feature['Rotation'])
             if ID in samples:
-                fet.setGeometry(feature.geometry())
-                rows = [ID]
-                if field_check != -1:
-                    rows.append(feature['Radius'])
-                    rows.append(feature['Rotation'])
                 try:
                     rows.extend(df.ix[ID].tolist())
                     fet.setAttributes(rows)
@@ -291,6 +294,10 @@ class TopologyParameters(QgsProcessingAlgorithm):
                 except Exception:
                     feedback.reportError(QCoreApplication.translate('Error','Could not find Sample No %s - skipping' %(ID)))
                     continue
+            else:
+                rows.extend([0]*count)
+                fet.setAttributes(rows)
+                writer.addFeature(fet, QgsFeatureSink.FastInsert)
 
         if plot:
             ID = ['Sample No. %s' %(s) for s in samples]
