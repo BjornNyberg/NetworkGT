@@ -40,7 +40,7 @@ class GridStats(QgsProcessingAlgorithm):
         return self.tr("2. Sampling")
 
     def shortHelpString(self):
-        return self.tr("A simple method to calculate basic statistics from a series of contour grids. Quantile option will return the value at the given quantile from 0 to 1.")
+        return self.tr("A simple method to calculate basic statistics from a series of contour grids for each Sample No ID. Quantile option will return the value at the given quantile from 0 to 1.")
 
     def groupId(self):
         return "2. Sampling"

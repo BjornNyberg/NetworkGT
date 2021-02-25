@@ -40,7 +40,7 @@ class GridCalc(QgsProcessingAlgorithm):
         return self.tr("2. Sampling")
 
     def shortHelpString(self):
-        return self.tr("A simple method to calculate values between two contour grids.")
+        return self.tr("A simple method to calculate values between two contour grids for each Sample No ID.")
 
     def groupId(self):
         return "2. Sampling"
