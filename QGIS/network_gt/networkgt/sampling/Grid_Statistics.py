@@ -31,7 +31,7 @@ class GridStats(QgsProcessingAlgorithm):
         return "Grid Statistics"
 
     def tr(self, text):
-        return QCoreApplication.translate("Simple_Grid", text)
+        return QCoreApplication.translate("Grid Statistics", text)
 
     def displayName(self):
         return self.tr("Grid Statistics")

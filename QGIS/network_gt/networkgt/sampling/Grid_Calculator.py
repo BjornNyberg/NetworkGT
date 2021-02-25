@@ -31,7 +31,7 @@ class GridCalc(QgsProcessingAlgorithm):
         return "Grid Calculator"
 
     def tr(self, text):
-        return QCoreApplication.translate("Simple_Grid", text)
+        return QCoreApplication.translate("Grid Calculator", text)
 
     def displayName(self):
         return self.tr("Grid Calculator")
@@ -72,7 +72,7 @@ class GridCalc(QgsProcessingAlgorithm):
 
         self.addParameter(QgsProcessingParameterEnum(self.Stats,
                                                      self.tr('Method'), options=[self.tr("add"),self.tr("subtract"),self.tr("multiply"),self.tr("divide")],
-                                                     defaultValue=0))
+                                                     defaultValue=1))
         self.addParameter(QgsProcessingParameterBoolean(self.absolute,
                                                         self.tr("Absolute Value"), False))
 
