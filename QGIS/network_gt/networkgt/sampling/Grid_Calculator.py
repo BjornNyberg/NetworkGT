@@ -78,7 +78,7 @@ class GridCalc(QgsProcessingAlgorithm):
 
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.outGrid,
-            self.tr("Contour Grid"),
+            self.tr("Grid Calculation"),
             QgsProcessing.TypeVectorPolygon))
 
     def processAlgorithm(self, parameters, context, feedback):
