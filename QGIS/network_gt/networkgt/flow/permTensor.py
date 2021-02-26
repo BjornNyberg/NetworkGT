@@ -222,36 +222,34 @@ class permTensor(QgsProcessingAlgorithm):
                 feedback.setProgress(int(enum*total))
             try:
                 FID = feature['Sample_No_']
+                Area = feature['Area']
+
+                if mpF:
+                    mPv = feature[mpF]
+                    if type(mPv) != float:
+                        feedback.reportError(QCoreApplication.translate('Error','Error - Matrix permeability field contains non float values'))
+                        return {}
+                else:
+                    mPv = mP
 
                 if FID in Ti1:
-                    Area = feature['Area']
                     I = feature['I']
                     Y = feature['Y']
                     X = feature['X']
 
-                    if mpF:
-                        mPv = feature[mpF]
-                        if type(mPv) != float:
-                            feedback.reportError(QCoreApplication.translate('Error','Error - Matrix permeability field contains non float values'))
-                            return {}
-                    else:
-                        mPv = mP
-
                     if hcB:
                         v1 = 4*X+2*Y
                         v2 = 4*X+2*Y+I
-                        if feature['Total Trace Length'] == 0:
+
+                        if v1 == 0:
                             hC = 0
+                            if v2 == 0:
+                                hC = 0.81
                         else:
-                            if v1 == 0:
+                            hC = ((v1/v2)*2.94)-2.13
+                            if hC < 0:
                                 hC = 0
-                                if v2 == 0:
-                                    hC = 0.81
-                            else:
-                                hC = ((v1/v2)*2.94)-2.13
-                                if hC < 0:
-                                    hC = 0
-                                mPv = (1-hC)*mPv
+                            mPv = (1-hC)*mPv
                     else:
                         hC = 1
 
@@ -263,34 +261,40 @@ class permTensor(QgsProcessingAlgorithm):
                     Kxy =(hC/Area)*Ti2v
                     Kyy =((hC/Area)*Ti4v)+mPv
 
-                    p = Kyy*Kyy+Kxy*Kxy+Kxy*Kxy+Kxx*Kxx
-                    q = Kyy*Kxx-Kxy*Kxy
+                else:
+                    Kxx = mPv
+                    Kxy = 0.0
+                    Kyy = mPv
 
-                    K1 = math.sqrt((p+math.sqrt(p*p-4*q*q))/2)
-                    K2 = math.sqrt((p-math.sqrt(p*p-4*q*q))/2)
-                    if K2 == 0:
-                        K12 = 0
-                    else:
-                        K12 = K1/K2
+                p = Kyy*Kyy+Kxy*Kxy+Kxy*Kxy+Kxx*Kxx
+                q = Kyy*Kxx-Kxy*Kxy
 
-                    if K12 == 1:
+                K1 = math.sqrt((p+math.sqrt(p*p-4*q*q))/2)
+                K2 = math.sqrt((p-math.sqrt(p*p-4*q*q))/2)
+                if K2 == 0:
+                    K12 = 0
+                else:
+                    K12 = K1/K2
+
+                if K12 == 1:
+                    K1a = -1
+                else:
+                    try:
+                        x,y = (Kyy*Kyy)+(Kxy*Kxy)-(Kxy*Kxy)-(Kxx*Kxx),2*(Kxy*Kxx+Kyy*Kxy)
+                        K1a = math.atan2(x,y)/2/(math.pi/180)
+                    except Exception:
                         K1a = -1
-                    else:
-                        try:
-                            x,y = (Kyy*Kyy)+(Kxy*Kxy)-(Kxy*Kxy)-(Kxx*Kxx),2*(Kxy*Kxx+Kyy*Kxy)
-                            K1a = math.atan2(x,y)/2/(math.pi/180)
-                        except Exception:
-                            K1a = -1
 
-                    rows = {idxs[0]:round(Kxx,P),idxs[1]:round(Kxy,P),idxs[2]:round(Kyy,P),idxs[3]:round(K1a,P),idxs[4]:round(K1,P),idxs[5]:round(K2,P),idxs[6]:round(K12,P)}
-                    if rotation > 0:
-                        rows[idxs[7]] = round((Kyy*(math.cos(rotation)**2))+(Kxx*(math.sin(rotation)**2)),P) #Kii
-                        rows[idxs[8]] = round((Kyy-Kxx)*math.sin(rotation)*math.cos(rotation),P) #Kij
-                        rows[idxs[9]] = round((Kxx*(math.cos(rotation)**2))+(Kyy*(math.sin(rotation)**2)),P) #Kjj
+                rows = {idxs[0]:round(Kxx,P),idxs[1]:round(Kxy,P),idxs[2]:round(Kyy,P),idxs[3]:round(K1a,P),idxs[4]:round(K1,P),idxs[5]:round(K2,P),idxs[6]:round(K12,P)}
+                if rotation > 0:
+                    rows[idxs[7]] = round((Kyy*(math.cos(rotation)**2))+(Kxx*(math.sin(rotation)**2)),P) #Kii
+                    rows[idxs[8]] = round((Kyy-Kxx)*math.sin(rotation)*math.cos(rotation),P) #Kij
+                    rows[idxs[9]] = round((Kxx*(math.cos(rotation)**2))+(Kyy*(math.sin(rotation)**2)),P) #Kjj
 
-                    pr.changeAttributeValues({feature.id():rows})
+                pr.changeAttributeValues({feature.id():rows})
 
-            except Exception:
+            except Exception as e:
+                feedback.reportError(QCoreApplication.translate('Error',str(e)))
                 continue
 
         TP.commitChanges()

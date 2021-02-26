@@ -116,7 +116,12 @@ class GridStats(QgsProcessingAlgorithm):
             for enum,feature in enumerate(grid.getFeatures(QgsFeatureRequest())):
                 if total != -1:
                     feedback.setProgress(int(enum*total))
-                ID = feature['Sample_No_']
+                try:
+                    ID = feature['Sample_No_']
+                except Exception:
+                    feedback.reportError(QCoreApplication.translate('Error', 'Error - Could not find Sample No ID.'))
+                    return {}
+
                 rows = {}
                 for name in names.keys():
                     try:
