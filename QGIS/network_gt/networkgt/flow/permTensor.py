@@ -173,10 +173,10 @@ class permTensor(QgsProcessingAlgorithm):
                     tL += l
                     startx,starty = endx,endy
 
-            mean = np.around(a/tL,decimals=4)
+            a = np.around(a/tL,decimals=4)
 
-            if mean > 180:
-                mean = np.around(mean-180,decimals=4)
+            if a > 180:
+                a = np.around(a-180,decimals=4)
 
             bLen = geom.length()
             if tF:
@@ -249,7 +249,7 @@ class permTensor(QgsProcessingAlgorithm):
                             hC = ((v1/v2)*2.94)-2.13
                             if hC < 0:
                                 hC = 0
-                            mPv = (1-hC)*mPv
+                        mPv = (1-hC)*mPv
                     else:
                         hC = 1
 
@@ -277,7 +277,7 @@ class permTensor(QgsProcessingAlgorithm):
                     K12 = K1/K2
 
                 if K12 == 1:
-                    K1a = -1
+                    K1a = 0
                 else:
                     try:
                         x,y = (Kyy*Kyy)+(Kxy*Kxy)-(Kxy*Kxy)-(Kxx*Kxx),2*(Kxy*Kxx+Kyy*Kxy)
