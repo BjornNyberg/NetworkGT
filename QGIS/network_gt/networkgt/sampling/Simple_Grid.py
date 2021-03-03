@@ -14,7 +14,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 import os
 import processing as st
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
-from qgis.core import (edit,QgsField, QgsFeature, QgsPointXY, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
+from qgis.core import (edit,QgsProcessingParameterBoolean,QgsField, QgsFeature, QgsPointXY, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
 
 class ContourGrid(QgsProcessingAlgorithm):
@@ -24,6 +24,7 @@ class ContourGrid(QgsProcessingAlgorithm):
     Radius = 'Radius'
     Grid='Grid'
     Rotation = 'Rotation'
+    Within = 'Within'
 
     def __init__(self):
         super().__init__()
@@ -80,6 +81,8 @@ class ContourGrid(QgsProcessingAlgorithm):
             self.tr("Rotation"),
             QgsProcessingParameterNumber.Double,
             0.0,minValue=0.0,maxValue=90.0))
+        self.addParameter(QgsProcessingParameterBoolean(self.Within,
+                                                        self.tr("Grid Within Interpretation Boundary"), False))
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.Grid,
             self.tr("Grid"),
@@ -91,6 +94,7 @@ class ContourGrid(QgsProcessingAlgorithm):
         rotation = parameters[self.Rotation]
         spacing = parameters[self.Width]
         radius = parameters[self.Radius]
+        w = parameters[self.Within]
 
         if rotation == 0.0:
             r = 0.00001
@@ -102,7 +106,8 @@ class ContourGrid(QgsProcessingAlgorithm):
                             QgsField('Area', QVariant.Double),
                             QgsField('Circ', QVariant.Double),
                             QgsField('Radius', QVariant.Double),
-                            QgsField('Rotation', QVariant.Double)]
+                            QgsField('Rotation', QVariant.Double),
+                            QgsField('Spacing', QVariant.Double)]
 
         for f in field_names:
             fs.append(f)
@@ -155,15 +160,17 @@ class ContourGrid(QgsProcessingAlgorithm):
             geom = feature.geometry()
 
             for m in cursorm:
-                if geom.within(m):
-                    buff = geom.centroid().buffer(float(radius),100)
-                    geom2 = buff.intersection(m)
-                    length = geom2.length()
-                    area = geom2.area()
-                    rows = [feature.id(),area,length,float(radius),rotation]
-                    fet.setGeometry(geom)
-                    fet.setAttributes(rows)
-                    writer.addFeature(fet,QgsFeatureSink.FastInsert)
-                    break
+                if w:
+                    if not geom.within(m):
+                        continue
+                buff = geom.centroid().buffer(float(radius),100)
+                geom2 = buff.intersection(m)
+                length = geom2.length()
+                area = geom2.area()
+                rows = [feature.id(),area,length,float(radius),rotation,spacing]
+                fet.setGeometry(geom)
+                fet.setAttributes(rows)
+                writer.addFeature(fet,QgsFeatureSink.FastInsert)
+                break
 
         return {self.Grid:dest_id}

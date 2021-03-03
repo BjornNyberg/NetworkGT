@@ -205,6 +205,8 @@ class permTensor(QgsProcessingAlgorithm):
             Ti2[FID] += i2
             Ti4[FID] += i4
 
+
+
         feedback.pushInfo(QCoreApplication.translate('Output','Calculating Permability Tensor'))
 
         traces,maxV = [],[]

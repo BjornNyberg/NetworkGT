@@ -265,6 +265,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
         if field_check != -1:
             fs.append(QgsField('Radius', QVariant.Double))
             fs.append(QgsField('Rotation', QVariant.Double))
+            fs.append(QgsField('Spacing', QVariant.Double))
 
         count = 0
         for c in df:
@@ -286,16 +287,22 @@ class TopologyParameters(QgsProcessingAlgorithm):
             if field_check != -1:
                 rows.append(feature['Radius'])
                 rows.append(feature['Rotation'])
+                rows.append(feature['Spacing'])
+                rows.append(feature['Circ'])
+                rows.append(feature['Area'])
+            else:
+                rows.append(feature.geometry().length())
+                rows.append(feature.geometry().area())
             if ID in samples:
                 try:
-                    rows.extend(df.ix[ID].tolist())
+                    rows.extend(df.ix[ID].tolist()[2:])
                     fet.setAttributes(rows)
                     writer.addFeature(fet,QgsFeatureSink.FastInsert)
                 except Exception:
                     feedback.reportError(QCoreApplication.translate('Error','Could not find Sample No %s - skipping' %(ID)))
                     continue
             else:
-                rows.extend([0]*count)
+                rows.extend([0]*(count-2))
                 fet.setAttributes(rows)
                 writer.addFeature(fet, QgsFeatureSink.FastInsert)
 
