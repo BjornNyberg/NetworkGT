@@ -282,7 +282,7 @@ class permTensor(QgsProcessingAlgorithm):
                     K1a = 0
                 else:
                     try:
-                        x,y = (Kyy*Kyy)+(Kxy*Kxy)-(Kxy*Kxy)-(Kxx*Kxx),2*(Kxy*Kxx+Kyy*Kxy)
+                        x,y = 2*(Kxy*Kxx+Kyy*Kxy),(Kyy*Kyy)+(Kxy*Kxy)-(Kxy*Kxy)-(Kxx*Kxx)
                         K1a = math.atan2(x,y)/2/(math.pi/180)
                     except Exception:
                         K1a = -1
