@@ -62,15 +62,12 @@ class permTensorPlot(QgsProcessingAlgorithm):
                     self.tr("Normalise Equal Area"),False))
         self.addParameter(QgsProcessingParameterBoolean(self.combine,
                     self.tr("Combine"),True))
-        self.addParameter(QgsProcessingParameterBoolean(self.export,
-                    self.tr("Export SVG File"),False))
 
     def processAlgorithm(self, parameters, context, feedback):
 
         TP = self.parameterAsLayer(parameters, self.TP, context)
         combine = parameters[self.combine]
         norm = parameters[self.norm]
-        E = parameters[self.export]
 
         try:
             import plotly.graph_objs as go
