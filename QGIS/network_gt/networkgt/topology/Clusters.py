@@ -163,7 +163,6 @@ class Clusters(QgsProcessingAlgorithm):
 
             except Exception as e:
                 feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
-                feedback.reportError(QCoreApplication.translate('Error', '%s' % (len(data))))
 
         feedback.pushInfo(QCoreApplication.translate('Clusters','Calculating Clusters'))
 
