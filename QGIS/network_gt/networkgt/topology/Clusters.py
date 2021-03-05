@@ -21,6 +21,7 @@ class Clusters(QgsProcessingAlgorithm):
     Network = 'Fracture Network'
     stats = 'Calculate Statistics'
     OUTPUT = 'Output Statistics'
+    Clusters = 'Output Clusters'
 
     def __init__(self):
         super().__init__()
@@ -64,7 +65,11 @@ class Clusters(QgsProcessingAlgorithm):
             [QgsProcessing.TypeVectorLine]))
 
         self.addParameter(QgsProcessingParameterFileDestination(self.OUTPUT,
-                            self.tr('Output Statistics'), ".csv"))
+                            self.tr('Statistics'),defaultValue ='',optional=True))
+        self.addParameter(QgsProcessingParameterFeatureSink(
+            self.Clusters,
+            self.tr("Output Clusters"),
+            QgsProcessing.TypeVectorLine, '',optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -79,23 +84,42 @@ class Clusters(QgsProcessingAlgorithm):
             return {}
 
         Network = self.parameterAsLayer(parameters, self.Network, context)
-
-        out = parameters[self.OUTPUT]
-        if out != 'TEMPORARY_OUTPUT':
-            S = True
+        if self.OUTPUT in parameters:
+            feedback.reportError(QCoreApplication.translate('Error',
+                                                            str(self.OUTPUT)))
+            feedback.reportError(QCoreApplication.translate('Error',
+                                                            str(parameters)))
+            out = parameters[self.OUTPUT]
+            if out != 'TEMPORARY_OUTPUT':
+                S = True
+            else:
+                S = False
         else:
             S = False
 
-        pr = Network.dataProvider()
+        if self.Clusters in parameters:
+            fields = QgsFields()
+            for field in Network.fields():
+                if field.name() != 'Cluster':
+                    fields.append(QgsField(field.name(), field.type()))
+
+            fields.append(QgsField('Cluster', QVariant.Double))
+
+            (writer, dest_id) = self.parameterAsSink(parameters, self.Clusters, context,
+                                                     fields, QgsWkbTypes.LineString, Network.sourceCrs())
+            fet = QgsFeature()
+
+        else:
+            pr = Network.dataProvider()
+
+            if Network.fields().indexFromName('Cluster') == -1:
+                pr.addAttributes([QgsField('Cluster', QVariant.Int)])
+                Network.updateFields()
+
+            idx = Network.fields().indexFromName('Cluster')
 
         field_check = Network.fields().indexFromName('Sample_No_')
         field_check2 = Network.fields().indexFromName('Connection')
-
-        if Network.fields().indexFromName('Cluster') == -1:
-            pr.addAttributes([QgsField('Cluster', QVariant.Int)])
-            Network.updateFields()
-
-        idx = Network.fields().indexFromName('Cluster')
 
         P = 100000
         graphs = {}
@@ -139,6 +163,7 @@ class Clusters(QgsProcessingAlgorithm):
 
             except Exception as e:
                 feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
+                feedback.reportError(QCoreApplication.translate('Error', '%s' % (len(data))))
 
         feedback.pushInfo(QCoreApplication.translate('Clusters','Calculating Clusters'))
 
@@ -160,9 +185,10 @@ class Clusters(QgsProcessingAlgorithm):
         clusterIDs = []
         branchType = []
         branchLength = []
+        if self.Clusters not in parameters:
+            Network.startEditing()
+            feedback.pushInfo(QCoreApplication.translate('Clusters','Updating Feature Class'))
 
-        Network.startEditing()
-        feedback.pushInfo(QCoreApplication.translate('Clusters','Updating Feature Class'))
         for enum,feature in enumerate(Network.getFeatures()):
             try:
                 if total > 0:
@@ -192,9 +218,19 @@ class Clusters(QgsProcessingAlgorithm):
                     cluster = clusters[branch]
                 except Exception:
                     cluster = -1
+                if self.Clusters in parameters:
+                    rows = []
+                    for field in Network.fields():
+                        if field.name() != 'Cluster':
+                            rows.append(feature[field.name()])
+                    rows.append(cluster)
 
-                rows = {idx:cluster}
-                pr.changeAttributeValues({feature.id():rows})
+                    fet.setGeometry(feature.geometry())
+                    fet.setAttributes(rows)
+                    writer.addFeature(fet, QgsFeatureSink.FastInsert)
+                else:
+                    rows = {idx:cluster}
+                    pr.changeAttributeValues({feature.id():rows})
                 if S and cluster != -1:
                     if field_check2 != -1:
                         C = feature['Connection']
@@ -205,8 +241,8 @@ class Clusters(QgsProcessingAlgorithm):
 
             except Exception:
                 continue
-
-        Network.commitChanges()
+        if self.Clusters not in parameters:
+            Network.commitChanges()
 
         if S:
             feedback.pushInfo(QCoreApplication.translate('Clusters','Creating Statistics File'))
@@ -228,7 +264,12 @@ class Clusters(QgsProcessingAlgorithm):
             values["Count"] = C
             values.fillna(0,inplace=True)
             values.to_csv(path_or_buf=out)
-
-            return {'Cluster Stats':out}
+            if self.Clusters:
+                return {'Cluster Stats': out,self.Clusters: dest_id}
+            else:
+                return {'Cluster Stats':out}
         else:
-            return {}
+            if self.Clusters in parameters:
+                return {self.Clusters: dest_id}
+            else:
+                return {}

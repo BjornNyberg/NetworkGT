@@ -22,7 +22,7 @@ class Sets(QgsProcessingAlgorithm):
     Network = 'Network'
     Sets='Sets'
     Bin_V ='Bins'
-    OUTPUT = 'Set Data'
+    Output = 'Output'
 
     def __init__(self):
         super().__init__()
@@ -73,6 +73,10 @@ class Sets(QgsProcessingAlgorithm):
             self.tr("Set Definitions By Bin Size"),
             QgsProcessingParameterNumber.Double,
             0.0,minValue=0.0))
+        self.addParameter(QgsProcessingParameterFeatureSink(
+            self.Output,
+            self.tr("Output"),
+            QgsProcessing.TypeVectorLine, '',optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -95,18 +99,34 @@ class Sets(QgsProcessingAlgorithm):
         else:
             bins = list(eval(self.parameterAsString(parameters, self.Sets, context)))
 
-        pr = layer.dataProvider()
-        new_fields = ['Set','Orient','Length']
-        for field in new_fields:
-            if layer.fields().indexFromName(field) == -1:
-                pr.addAttributes([QgsField(field, QVariant.Double)])
+        new_fields = ['Set', 'Orient', 'Length']
 
-        layer.updateFields()
-        idxs = []
-        for field in new_fields:
-            idxs.append(layer.fields().indexFromName(field))
+        if self.Output in parameters:
+            fields = QgsFields()
+            for field in layer.fields():
+                if field.name() not in new_fields:
+                    fields.append(QgsField(field.name(), field.type()))
 
-        layer.startEditing()
+            for field in new_fields:
+                fields.append(QgsField(field, QVariant.Double))
+
+            (writer, dest_id) = self.parameterAsSink(parameters, self.Output, context,
+                                                     fields, QgsWkbTypes.LineString, layer.sourceCrs())
+            fet = QgsFeature()
+
+        else:
+            pr = layer.dataProvider()
+
+            for field in new_fields:
+                if layer.fields().indexFromName(field) == -1:
+                    pr.addAttributes([QgsField(field, QVariant.Double)])
+
+            layer.updateFields()
+            idxs = []
+            for field in new_fields:
+                idxs.append(layer.fields().indexFromName(field))
+
+            layer.startEditing()
 
         features = layer.selectedFeatures()
         total = layer.selectedFeatureCount()
@@ -159,9 +179,22 @@ class Sets(QgsProcessingAlgorithm):
                     value = enum
                     break
 
-            rows = {idxs[0]:value,idxs[1]:float(mean),idxs[2]:float(feature.geometry().length())}
+            if self.Output in parameters:
+                rows = []
+                for field in layer.fields():
+                    if field.name() not in new_fields:
+                        rows.append(feature[field.name()])
+                rows.extend([value,float(mean),float(feature.geometry().length())])
 
-            pr.changeAttributeValues({feature.id():rows})
-        layer.commitChanges()
+                fet.setGeometry(feature.geometry())
+                fet.setAttributes(rows)
+                writer.addFeature(fet, QgsFeatureSink.FastInsert)
+            else:
+                rows = {idxs[0]:value,idxs[1]:float(mean),idxs[2]:float(feature.geometry().length())}
+                pr.changeAttributeValues({feature.id():rows})
 
-        return {}
+        if self.Output in parameters:
+            return {self.Output: dest_id}
+        else:
+            layer.commitChanges()
+            return {}

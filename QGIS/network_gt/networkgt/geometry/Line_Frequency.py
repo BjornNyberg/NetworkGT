@@ -420,17 +420,7 @@ class LineFrequency(QgsProcessingAlgorithm):
                                  fill = dict(color=['rgb(235, 193, 238)', 'rgba(228, 222, 249, 0.65)']))))
 
                 fig = dict(data=traces, layout=layout)
-
-                fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-                outDir = os.path.join(tempfile.gettempdir(),'Plotly')
-                if not os.path.exists(outDir):
-                    os.mkdir(outDir)
-                if E:
-                    fname = os.path.join(outDir,'%s.svg'%(fname))
-                    plotly.offline.plot(fig,image='svg',filename=fname)
-                else:
-                    fname = os.path.join(outDir,'%s.html'%(fname))
-                    plotly.offline.plot(fig,filename=fname)
+                fig.show()
 
         if Combine:
 

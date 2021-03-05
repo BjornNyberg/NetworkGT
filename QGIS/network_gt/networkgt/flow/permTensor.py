@@ -26,6 +26,7 @@ class permTensor(QgsProcessingAlgorithm):
     mpField = 'Matrix Field'
     ftField = 'Transmisivity Field'
     hC = 'HC'
+    Output = 'Output'
 
     def __init__(self):
         super().__init__()
@@ -86,7 +87,8 @@ class permTensor(QgsProcessingAlgorithm):
                                 self.tr('Transmisivity Field'), parentLayerParameterName=self.Network, type=QgsProcessingParameterField.Numeric,optional=True))
         self.addParameter(QgsProcessingParameterBoolean(self.hC,
                     self.tr("Hydraulic Connectivity"),True))
-
+        self.addParameter(QgsProcessingParameterFeatureSink(
+            self.Output, self.tr("Percolation"), QgsProcessing.TypeVectorPolygon, '',optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -108,7 +110,6 @@ class permTensor(QgsProcessingAlgorithm):
 
         P = 15
 
-        pr = TP.dataProvider()
         new_fields = ['Kxx','Kxy','Kyy','K1 Azimuth','K1','K2','K1_K2']
 
         if rotation > 0:
@@ -126,14 +127,29 @@ class permTensor(QgsProcessingAlgorithm):
             feedback.reportError(QCoreApplication.translate('Error','Topology Parameters input is invalid - please run the topology parameters tool prior to calulcating the permeability tensor'))
             return {}
 
-        for field in new_fields:
-            if TP.fields().indexFromName(field) == -1:
-                pr.addAttributes([QgsField(field, QVariant.Double)])
+        if self.Output in parameters:
+            fields = QgsFields()
+            for field in TP.fields():
+                if field.name() not in new_fields:
+                    fields.append(QgsField(field.name(), field.type()))
 
-        TP.updateFields()
-        idxs = []
-        for field in new_fields:
-            idxs.append(TP.fields().indexFromName(field))
+            for field in new_fields:
+                fields.append(QgsField(field, QVariant.Double))
+
+            (writer, dest_id) = self.parameterAsSink(parameters, self.Output, context,
+                                                     fields, QgsWkbTypes.Polygon, TP.sourceCrs())
+        else:
+
+            pr = TP.dataProvider()
+
+            for field in new_fields:
+                if TP.fields().indexFromName(field) == -1:
+                    pr.addAttributes([QgsField(field, QVariant.Double)])
+
+            TP.updateFields()
+            idxs = []
+            for field in new_fields:
+                idxs.append(TP.fields().indexFromName(field))
 
         Ti1, Ti2, Ti4 = {}, {},{}
         feedback.pushInfo(QCoreApplication.translate('Output','Calculating Tangential Vector Tensor'))
@@ -205,12 +221,9 @@ class permTensor(QgsProcessingAlgorithm):
             Ti2[FID] += i2
             Ti4[FID] += i4
 
-
-
         feedback.pushInfo(QCoreApplication.translate('Output','Calculating Permability Tensor'))
 
         traces,maxV = [],[]
-        TP.startEditing()
 
         features = TP.selectedFeatures()
         total = TP.selectedFeatureCount()
@@ -218,6 +231,11 @@ class permTensor(QgsProcessingAlgorithm):
             features = TP.getFeatures()
             total = TP.featureCount()
         total = 100.0/total
+
+        if self.Output in parameters:
+            fet = QgsFeature()
+        else:
+            TP.startEditing()
 
         for enum,feature in enumerate(features):
             if total != -1:
@@ -286,19 +304,35 @@ class permTensor(QgsProcessingAlgorithm):
                         K1a = math.atan2(x,y)/2/(math.pi/180)
                     except Exception:
                         K1a = -1
+                if self.Output in parameters:
+                    rows = []
+                    for field in TP.fields():
+                        if field.name() not in new_fields:
+                            rows.append(feature[field.name()])
+                    rows.extend([round(Kxx, P), round(Kxy, P),round(Kyy, P),round(K1a, P), round(K1, P),round(K2, P),round(K12, P)])
+                    if rotation > 0:
+                        rows.append(round((Kyy*(math.cos(rotation)**2))+(Kxx*(math.sin(rotation)**2)),P)) #Kii
+                        rows.append(round((Kyy-Kxx)*math.sin(rotation)*math.cos(rotation),P)) #Kij
+                        rows.append(round((Kxx*(math.cos(rotation)**2))+(Kyy*(math.sin(rotation)**2)),P)) #Kjj
 
-                rows = {idxs[0]:round(Kxx,P),idxs[1]:round(Kxy,P),idxs[2]:round(Kyy,P),idxs[3]:round(K1a,P),idxs[4]:round(K1,P),idxs[5]:round(K2,P),idxs[6]:round(K12,P)}
-                if rotation > 0:
-                    rows[idxs[7]] = round((Kyy*(math.cos(rotation)**2))+(Kxx*(math.sin(rotation)**2)),P) #Kii
-                    rows[idxs[8]] = round((Kyy-Kxx)*math.sin(rotation)*math.cos(rotation),P) #Kij
-                    rows[idxs[9]] = round((Kxx*(math.cos(rotation)**2))+(Kyy*(math.sin(rotation)**2)),P) #Kjj
+                    fet.setGeometry(feature.geometry())
+                    fet.setAttributes(rows)
+                    writer.addFeature(fet, QgsFeatureSink.FastInsert)
 
-                pr.changeAttributeValues({feature.id():rows})
+                else:
+                    rows = {idxs[0]:round(Kxx,P),idxs[1]:round(Kxy,P),idxs[2]:round(Kyy,P),idxs[3]:round(K1a,P),idxs[4]:round(K1,P),idxs[5]:round(K2,P),idxs[6]:round(K12,P)}
+                    if rotation > 0:
+                        rows[idxs[7]] = round((Kyy*(math.cos(rotation)**2))+(Kxx*(math.sin(rotation)**2)),P) #Kii
+                        rows[idxs[8]] = round((Kyy-Kxx)*math.sin(rotation)*math.cos(rotation),P) #Kij
+                        rows[idxs[9]] = round((Kxx*(math.cos(rotation)**2))+(Kyy*(math.sin(rotation)**2)),P) #Kjj
+                    pr.changeAttributeValues({feature.id():rows})
 
             except Exception as e:
                 feedback.reportError(QCoreApplication.translate('Error',str(e)))
                 continue
 
-        TP.commitChanges()
-
-        return {}
+        if self.Output in parameters:
+            return {self.Output: dest_id}
+        else:
+            TP.commitChanges()
+            return {}

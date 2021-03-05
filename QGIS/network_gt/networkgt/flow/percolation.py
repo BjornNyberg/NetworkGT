@@ -24,7 +24,7 @@ class Percolation(QgsProcessingAlgorithm):
 
     TP = "Topology Parameters"
     CV = "CV"
-    Export = 'Export'
+    Output = 'Output'
 
     def __init__(self):
         super().__init__()
@@ -65,9 +65,10 @@ class Percolation(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber.Double,
             0.0,
             minValue=0.0))
-
-        self.addParameter(QgsProcessingParameterBoolean(self.Export,
-                    self.tr("Export SVG File"),False))
+        self.addParameter(QgsProcessingParameterFeatureSink(
+            self.Output,
+            self.tr("Percolation"),
+            QgsProcessing.TypeVectorPolygon, '',optional=True))
 
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -75,8 +76,6 @@ class Percolation(QgsProcessingAlgorithm):
         plot = True
 
         try:
-            import plotly
-            import plotly.plotly as py
             import plotly.graph_objs as go
         except Exception:
             feedback.reportError(QCoreApplication.translate('Error','Plotting will be disabled as plotly module did not load - please install the necessary dependencies.'))
@@ -84,29 +83,40 @@ class Percolation(QgsProcessingAlgorithm):
 
         TP = self.parameterAsLayer(parameters, self.TP, context)
         CV = parameters[self.CV]
-        E = parameters[self.Export]
 
-        pr = TP.dataProvider()
-        new_fields = ['B22','B22c-R','B22c-O','B22c-30','B22c-60']
-        for field in new_fields:
-            if TP.fields().indexFromName(field) == -1:
-                pr.addAttributes([QgsField(field, QVariant.Double)])
+        if TP.fields().indexFromName('I') == -1:
+            feedback.reportError(QCoreApplication.translate('Error','Topology Parameters input is invalid - please run the topology parameters tool prior to calulcating percolation'))
+            return {}
 
-        TP.updateFields()
-        idxs = []
-        for field in new_fields:
-            idxs.append(TP.fields().indexFromName(field))
+        new_fields = ['B22', 'B22c-R', 'B22c-O', 'B22c-30', 'B22c-60']
 
-        TP.startEditing()
+        if self.Output in parameters:
+            fields = QgsFields()
+            for field in TP.fields():
+                if field.name() not in new_fields:
+                    fields.append(QgsField(field.name(), field.type()))
+
+            for field in new_fields:
+                fields.append(QgsField(field, QVariant.Double))
+
+            (writer, dest_id) = self.parameterAsSink(parameters, self.Output, context,
+                                                     fields, QgsWkbTypes.Polygon, TP.sourceCrs())
+            fet = QgsFeature()
+        else:
+            pr = TP.dataProvider()
+            for field in new_fields:
+                if TP.fields().indexFromName(field) == -1:
+                    pr.addAttributes([QgsField(field, QVariant.Double)])
+            TP.updateFields()
+            idxs = []
+            for field in new_fields:
+                idxs.append(TP.fields().indexFromName(field))
+            TP.startEditing()
 
         feedback.pushInfo(QCoreApplication.translate('TopologyParametersOutput','Calculating Percolation'))
 
         samples = []
         B,R,O,a60,a30 = [],[],[],[],[]
-
-        if TP.fields().indexFromName('I') == -1:
-            feedback.reportError(QCoreApplication.translate('Error','Topology Parameters input is invalid - please run the topology parameters tool prior to calulcating percolation'))
-            return {}
 
         features = TP.selectedFeatures()
         total = TP.selectedFeatureCount()
@@ -129,7 +139,11 @@ class Percolation(QgsProcessingAlgorithm):
                 newB = ((newX*4) +  feature['I'])/2
 
                 newCL = (2*newX)/newL
-
+                if self.Output in parameters:
+                    rows = []
+                    for field in TP.fields():
+                        if field.name() not in new_fields:
+                            rows.append(feature[field.name()])
                 try:
                     B22 = (feature['Dimensionl']*(math.sqrt(CV**2+1))) #Shapefile attribute name limit of 10
                 except Exception:
@@ -156,7 +170,10 @@ class Percolation(QgsProcessingAlgorithm):
                     B22c60V = B22c60*(newB/curB)*(math.sqrt(CV**2+1))
                     B22c30V = B22c30*(newB/curB)*(math.sqrt(CV**2+1))
 
-                    rows = {idxs[0]:B22,idxs[1]:B22cR,idxs[2]:B22cO,idxs[3]:B22c30V,idxs[4]:B22c60V}
+                    if self.Output in parameters:
+                        rows.extend[B22,B22cR,B22cO,B22c30V,B22c60V]
+                    else:
+                        rows = {idxs[0]:B22,idxs[1]:B22cR,idxs[2]:B22cO,idxs[3]:B22c30V,idxs[4]:B22c60V}
 
                     n = 'Sample No. %s'%(feature['Sample_No_'])
                     samples.append(n)
@@ -166,13 +183,23 @@ class Percolation(QgsProcessingAlgorithm):
                     a60.append(B22c60V)
                     a30.append(B22c30V)
                 else:
+                    if self.Output in parameters:
+                        rows.extend[-1, -1, -1, -1, -1]
                     rows = {idxs[0]:B22,idxs[1]:-1,idxs[2]:-1,idxs[3]:-1,idxs[4]:-1}
             else:
-                rows = {idxs[0]:B22,idxs[1]:0,idxs[2]:0,idxs[3]:0,idxs[4]:0}
+                if self.Output in parameters:
+                    rows.extend[0, 0, 0, 0, 0]
+                else:
+                    rows = {idxs[0]:B22,idxs[1]:0,idxs[2]:0,idxs[3]:0,idxs[4]:0}
+            if self.Output in parameters:
+                fet.setGeometry(feature.geometry())
+                fet.setAttributes(rows)
+                writer.addFeature(fet, QgsFeatureSink.FastInsert)
+            else:
+                pr.changeAttributeValues({feature.id():rows})
+        if not self.Output in parameters:
+            TP.commitChanges()
 
-            pr.changeAttributeValues({feature.id():rows})
-
-        TP.commitChanges()
         if plot:
             traces = []
 
@@ -216,17 +243,10 @@ class Percolation(QgsProcessingAlgorithm):
                   yaxis = dict(title = 'B22',range=[ymin, ymax]),
                   )
 
-            fig = go.Figure(data=traces,layout=layout)
+            fig = go.Figure(data=traces, layout=layout)
+            fig.show()
 
-            fname = ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-            outDir = os.path.join(tempfile.gettempdir(),'Plotly')
-            if not os.path.exists(outDir):
-                os.mkdir(outDir)
-            if E:
-                fname = os.path.join(outDir,'%s.svg'%(fname))
-                plotly.offline.plot(fig,image='svg',filename=fname)
-            else:
-                fname = os.path.join(outDir,'%s.html'%(fname))
-                plotly.offline.plot(fig,filename=fname)
-
-        return {}
+        if self.Output in parameters:
+            return {self.Output: dest_id}
+        else:
+            return {}

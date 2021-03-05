@@ -21,6 +21,7 @@ class TBlocks(QgsProcessingAlgorithm):
     Clusters = 'Clusters'
     Nodes = 'Nodes'
     Samples = 'Sample Areas'
+    Output = 'Output'
 
     def __init__(self):
         super().__init__()
@@ -66,23 +67,40 @@ class TBlocks(QgsProcessingAlgorithm):
             self.Clusters,
             self.tr("Clusters"),
             [QgsProcessing.TypeVectorLine]))
+        self.addParameter(QgsProcessingParameterFeatureSink(
+            self.Output,
+            self.tr("Output"),
+            QgsProcessing.TypeVectorPolygon,'',optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
         try:
             layer = self.parameterAsLayer(parameters, self.Samples, context)
             layer2 = self.parameterAsLayer(parameters, self.Clusters, context)
 
-            pr = layer.dataProvider()
             new_fields = ['NoWB','NoTB','TB_Avg']
-            for field in new_fields:
-                if layer.fields().indexFromName(field) == -1:
-                    pr.addAttributes([QgsField(field, QVariant.Double)])
 
-            layer.updateFields()
+            if self.Output in parameters:
+                fields = QgsFields()
+                for field in layer.fields():
+                    if field.name() not in new_fields:
+                        fields.append(QgsField(field.name(), field.type()))
+                for field in new_fields:
+                    fields.append(QgsField(field, QVariant.Double))
+                (writer, dest_id) = self.parameterAsSink(parameters, self.Output, context,
+                                                          fields, QgsWkbTypes.Polygon, layer.sourceCrs())
 
-            idxs = []
-            for field in new_fields:
-                idxs.append(layer.fields().indexFromName(field))
+            else:
+                pr = layer.dataProvider()
+
+                for field in new_fields:
+                    if layer.fields().indexFromName(field) == -1:
+                        pr.addAttributes([QgsField(field, QVariant.Double)])
+
+                layer.updateFields()
+
+                idxs = []
+                for field in new_fields:
+                    idxs.append(layer.fields().indexFromName(field))
 
             T = layer.fields().indexFromName('Sample_No_')
             if T == -1:
@@ -123,8 +141,10 @@ class TBlocks(QgsProcessingAlgorithm):
 
             total = 100.0/layer.featureCount()
             feedback.pushInfo(QCoreApplication.translate('Blocks','Calculating Theoretical Blocks'))
-
-            layer.startEditing()
+            if self.Output in parameters:
+                fet = QgsFeature()
+            else:
+                layer.startEditing()
             for enum,feature in enumerate(layer.getFeatures()):
                 if total > 0:
                     feedback.setProgress(int(enum*total))
@@ -151,10 +171,25 @@ class TBlocks(QgsProcessingAlgorithm):
                     else:
                         tb = 0
 
+                if self.Output in parameters:
+
+                    rows = []
+                    for field in layer.fields():
+                        if field.name() not in new_fields:
+                            rows.append(feature[field.name()])
+                    rows.extend([float(blocks),float(tb),tbArea])
+
+                    fet.setGeometry(feature.geometry())
+                    fet.setAttributes(rows)
+                    writer.addFeature(fet, QgsFeatureSink.FastInsert)
+                else:
                     pr.changeAttributeValues({feature.id():{idxs[0]:float(blocks),idxs[1]:float(tb),idxs[2]:tbArea}})
-            layer.commitChanges()
 
         except Exception as e:
             feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
             return {}
-        return {}
+        if self.Output in parameters:
+            return {self.Output: dest_id}
+        else:
+            layer.commitChanges()
+            return {}

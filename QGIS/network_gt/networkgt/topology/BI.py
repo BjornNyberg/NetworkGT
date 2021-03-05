@@ -23,6 +23,7 @@ class IBlocks(QgsProcessingAlgorithm):
     Network = 'Fracture Network'
     Blocks = 'Blocks'
     Samples = 'Sample Area'
+    Output = 'Output'
 
     def __init__(self):
         super().__init__()
@@ -71,26 +72,57 @@ class IBlocks(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.Blocks,
             self.tr("Identified Blocks"),
-            QgsProcessing.TypeVectorPolygon))
+            QgsProcessing.TypeVectorPolygon,'',optional=True))
+        self.addParameter(QgsProcessingParameterFeatureSink(
+            self.Output,
+            self.tr("Output"),
+            QgsProcessing.TypeVectorPolygon,'',optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
         layer = self.parameterAsLayer(parameters, self.Samples, context)
         Network = self.parameterAsLayer(parameters, self.Network, context)
 
-        fs = QgsFields()
-        fs.append(QgsField('FID', QVariant.Int))
-        fs.append(QgsField('Area', QVariant.Double))
+        if self.Blocks in parameters:
+            fs = QgsFields()
+            fs.append(QgsField('FID', QVariant.Int))
+            fs.append(QgsField('Area', QVariant.Double))
 
-        (writer, dest_id) = self.parameterAsSink(parameters, self.Blocks, context,
-                                            fs, QgsWkbTypes.Polygon, layer.sourceCrs())
+            (writer, dest_id) = self.parameterAsSink(parameters, self.Blocks, context,
+                                                fs, QgsWkbTypes.Polygon, layer.sourceCrs())
+        pr = Network.dataProvider()
 
-        pr = layer.dataProvider()
-        new_fields = ['MinB','MeanB','MaxB','SumB','NoB','NoIB']
-        for field in new_fields:
-            if layer.fields().indexFromName(field) == -1:
-                pr.addAttributes([QgsField(field, QVariant.Double)])
+        field_check = Network.fields().indexFromName('Sample_No_')
+        field_check2 = Network.fields().indexFromName('Connection')
 
-        layer.updateFields()
+        if Network.fields().indexFromName('Cluster') == -1:
+            pr.addAttributes([QgsField('Cluster', QVariant.Int)])
+            Network.updateFields()
+
+        idx = Network.fields().indexFromName('Cluster')
+        new_fields = ['MinB', 'MeanB', 'MaxB', 'SumB', 'NoB', 'NoIB']
+
+        if self.Output in parameters:
+            fields = QgsFields()
+            for field in layer.fields():
+                if field.name() not in new_fields:
+                    fields.append(QgsField(field.name(), field.type()))
+            for field in new_fields:
+                fields.append(QgsField(field, QVariant.Double))
+
+            (writer, dest_id2) = self.parameterAsSink(parameters, self.Output, context,
+                                                     fields, QgsWkbTypes.Polygon, layer.sourceCrs())
+        else:
+            pr = layer.dataProvider()
+
+            for field in new_fields:
+                if layer.fields().indexFromName(field) == -1:
+                    pr.addAttributes([QgsField(field, QVariant.Double)])
+
+            layer.updateFields()
+
+            idxs = []
+            for field in new_fields:
+                idxs.append(layer.fields().indexFromName(field))
 
         R = layer.fields().indexFromName('Radius')
 
@@ -103,10 +135,6 @@ class IBlocks(QgsProcessingAlgorithm):
 
         features = bs['OUTPUT'].getFeatures()
 
-        idxs = []
-        for field in new_fields:
-            idxs.append(layer.fields().indexFromName(field))
-
         cursorm = []
 
         fet = QgsFeature()
@@ -114,15 +142,20 @@ class IBlocks(QgsProcessingAlgorithm):
         for feature in features:
             geom = feature.geometry()
             cursorm.append(geom)
-            fet.setGeometry(geom)
-            rows = [feature.id(),geom.area()]
-            fet.setAttributes(rows)
-            writer.addFeature(fet,QgsFeatureSink.FastInsert)
+            if self.Blocks in parameters:
+                fet.setGeometry(geom)
+                rows = [feature.id(),geom.area()]
+                fet.setAttributes(rows)
+                writer.addFeature(fet,QgsFeatureSink.FastInsert)
 
         total = 100.0/layer.featureCount()
         feedback.pushInfo(QCoreApplication.translate('Blocks','Calculating Statistics'))
 
-        layer.startEditing()
+        if self.Output in parameters:
+            fet2 = QgsFeature()
+        else:
+            layer.startEditing()
+
         for enum,feature in enumerate(layer.getFeatures()):
             if total > 0:
                 feedback.setProgress(int(enum*total))
@@ -138,10 +171,31 @@ class IBlocks(QgsProcessingAlgorithm):
                         count += 1
                     intersect = geom.intersection(m)
                     data.append(intersect.area())
-            if data:
-                pr.changeAttributeValues({feature.id():{idxs[0]:float(np.min(data)),idxs[1]:float(np.mean(data)),idxs[2]:float(np.max(data)),idxs[3]:float(sum(data)),idxs[4]:float(len(data)),idxs[5]:float(len(data)-count)}})
-            else:
-                pr.changeAttributeValues({feature.id():{idxs[0]:0,idxs[1]:0,idxs[2]:0,idxs[3]:0,idxs[4]:0,idxs[5]:0}})
-        layer.commitChanges()
+            if self.Output in parameters:
+                rows = []
+                for field in layer.fields():
+                    if field.name() not in new_fields:
+                        rows.append(feature[field.name()])
+                if data:
+                    rows.extend([float(np.min(data)),float(np.mean(data)),float(np.max(data)),float(sum(data)),float(len(data)),float(len(data)-count)])
+                else:
+                    rows.extend([0,0,0,0,0,0])
 
-        return {self.Blocks:dest_id}
+                fet2.setGeometry(feature.geometry())
+                fet2.setAttributes(rows)
+                writer.addFeature(fet2, QgsFeatureSink.FastInsert)
+            else:
+                if data:
+                    pr.changeAttributeValues({feature.id():{idxs[0]:float(np.min(data)),idxs[1]:float(np.mean(data)),idxs[2]:float(np.max(data)),idxs[3]:float(sum(data)),idxs[4]:float(len(data)),idxs[5]:float(len(data)-count)}})
+                else:
+                    pr.changeAttributeValues({feature.id():{idxs[0]:0,idxs[1]:0,idxs[2]:0,idxs[3]:0,idxs[4]:0,idxs[5]:0}})
+
+        if self.Output in parameters:
+            if self.Blocks in parameters:
+                return {self.Blocks: dest_id, self.Output: dest_id2}
+            else:
+                return {self.Output: dest_id2}
+        else:
+            layer.commitChanges()
+            if self.Blocks in parameters:
+                return {self.Blocks:dest_id}

@@ -28,6 +28,7 @@ class Aperture(QgsProcessingAlgorithm):
     C = 'C'
     FP = 'Fracture Porosity'
     Group = 'Group'
+    Output = 'Output'
 
     def __init__(self):
         super().__init__()
@@ -90,6 +91,11 @@ class Aperture(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber.Double,
             0.0, optional=True))
 
+        self.addParameter(QgsProcessingParameterFeatureSink(
+            self.Output,
+            self.tr("Aperture"),
+            QgsProcessing.TypeVectorLine, '',optional=True))
+
     def processAlgorithm(self, parameters, context, feedback):
 
         Network = self.parameterAsLayer(parameters, self.Network, context)
@@ -99,8 +105,6 @@ class Aperture(QgsProcessingAlgorithm):
         m = parameters[self.Method]
         grp = parameters[self.Group]
 
-        pr = Network.dataProvider()
-
         if const > 0:
             new_fields = ['maxA','avgA','Aperture','IntrinsicP','Transmisiv']
         else:
@@ -109,14 +113,28 @@ class Aperture(QgsProcessingAlgorithm):
         if grp:
             new_fields.append('Fault Len')
 
-        for field in new_fields:
-            if Network.fields().indexFromName(field) == -1:
-                pr.addAttributes([QgsField(field, QVariant.Double)])
+        if self.Output in parameters:
+            fields = QgsFields()
+            for field in Network.fields():
+                if field.name() not in new_fields:
+                    fields.append(QgsField(field.name(), field.type()))
 
-        Network.updateFields()
-        idxs = []
-        for field in new_fields:
-            idxs.append(Network.fields().indexFromName(field))
+            for field in new_fields:
+                fields.append(QgsField(field, QVariant.Double))
+
+            (writer, dest_id) = self.parameterAsSink(parameters, self.Output, context,
+                                                     fields, QgsWkbTypes.LineString, Network.sourceCrs())
+
+        else:
+            pr = Network.dataProvider()
+            for field in new_fields:
+                if Network.fields().indexFromName(field) == -1:
+                    pr.addAttributes([QgsField(field, QVariant.Double)])
+
+            Network.updateFields()
+            idxs = []
+            for field in new_fields:
+                idxs.append(Network.fields().indexFromName(field))
 
         field_check = Network.fields().indexFromName('origLen')
         if field_check != -1:
@@ -149,7 +167,10 @@ class Aperture(QgsProcessingAlgorithm):
                     data[FID] += fLen
 
         feedback.pushInfo(QCoreApplication.translate('Output','Updating Aperture Field'))
-        Network.startEditing()
+        if self.Output in parameters:
+            fet = QgsFeature()
+        else:
+            Network.startEditing()
         for enum,feature in enumerate(features):
             if total > 0:
                 feedback.setProgress(int(enum*total))
@@ -176,16 +197,33 @@ class Aperture(QgsProcessingAlgorithm):
             iP =(((a**2)/12)*fp)/9.869233E-16
             t = iP*a
 
-            if const > 0:
-                rows = {idxs[0]:maxA,idxs[1]:avgA,idxs[2]:const,idxs[3]:iP,idxs[4]:t}
+            if self.Output in parameters:
+                rows = []
+                for field in Network.fields():
+                    if field.name() not in new_fields:
+                        rows.append(feature[field.name()])
+                if const > 0:
+                    rows.extend([maxA,avgA,const,iP,t])
+                else:
+                    rows.extend([maxA, avgA, iP, t])
+                if grp:
+                    rows.append(fLen)
+                fet.setGeometry(feature.geometry())
+                fet.setAttributes(rows)
+                writer.addFeature(fet, QgsFeatureSink.FastInsert)
             else:
-                rows = {idxs[0]:maxA,idxs[1]:avgA,idxs[2]:iP,idxs[3]:t}
+                if const > 0:
+                    rows = {idxs[0]:maxA,idxs[1]:avgA,idxs[2]:const,idxs[3]:iP,idxs[4]:t}
+                else:
+                    rows = {idxs[0]:maxA,idxs[1]:avgA,idxs[2]:iP,idxs[3]:t}
 
-            if grp:
-                rows[idxs[-1]] = fLen
+                if grp:
+                    rows[idxs[-1]] = fLen
 
-            pr.changeAttributeValues({feature.id():rows})
+                pr.changeAttributeValues({feature.id():rows})
 
-        Network.commitChanges()
-
-        return {}
+        if self.Output in parameters:
+            return {self.Output: dest_id}
+        else:
+            Network.commitChanges()
+            return {}
