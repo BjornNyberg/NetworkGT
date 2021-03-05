@@ -4,7 +4,7 @@
 
 [general]
 name=NetworkGT
-qgisMinimumVersion=3.4
+qgisMinimumVersion=3.10
 description=NetworkGT (Network Geometry and Topology) Toolbox is a set of tools designed for the geometric and topological analysis of fracture networks.
 version=1.0
 author=Bjorn Nyberg
