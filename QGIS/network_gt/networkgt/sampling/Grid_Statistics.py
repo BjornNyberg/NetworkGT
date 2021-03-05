@@ -12,6 +12,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
 import os
+import numpy as np
 import pandas as pd
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (edit,QgsField, QgsFeature, QgsPointXY, QgsProcessingParameterMultipleLayers, QgsProcessingParameterNumber, QgsProcessingParameterEnum, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
@@ -143,28 +144,32 @@ class GridStats(QgsProcessingAlgorithm):
             fet.setGeometry(geom)
 
             for name in list(names.keys())[1:]:
-                if q > 0:
-                    v = g[name].quantile(q)
-                elif stat == 0:
-                    v = g[name].mean()
-                elif stat == 1:
-                    v = g[name].min()
-                elif stat == 2:
-                    v = g[name].max()
-                elif stat == 3:
-                    v = g[name].std()
-                elif stat == 4:
-                    v = g[name].max()-g[name].min()
-                elif stat == 5:
-                    v = g[name].sum()
-                elif stat == 6:
-                    v = g[name].mode()
-                elif stat == 7:
-                    v = g[name].median()
-                elif stat == 8:
-                    v = g[name].kurtosis()
-                elif stat == 9:
-                    v = g[name].skew()
+
+                try:
+                    if q > 0:
+                        v = g[name].quantile(q)
+                    elif stat == 0:
+                        v = g[name].mean()
+                    elif stat == 1:
+                        v = g[name].min()
+                    elif stat == 2:
+                        v = g[name].max()
+                    elif stat == 3:
+                        v = g[name].std()
+                    elif stat == 4:
+                        v = g[name].max()-g[name].min()
+                    elif stat == 5:
+                        v = g[name].sum()
+                    elif stat == 6:
+                        v = g[name].mode()
+                    elif stat == 7:
+                        v = g[name].median()
+                    elif stat == 8:
+                        v = g[name].kurtosis()
+                    elif stat == 9:
+                        v = g[name].skew()
+                except Exception:
+                    v = np.NaN
 
                 rows.append(float(v))
 
