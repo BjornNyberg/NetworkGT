@@ -88,7 +88,7 @@ class permTensor(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterBoolean(self.hC,
                     self.tr("Hydraulic Connectivity"),True))
         self.addParameter(QgsProcessingParameterFeatureSink(
-            self.Output, self.tr("Percolation"), QgsProcessing.TypeVectorPolygon, '',optional=True))
+            self.Output, self.tr("Permeability Tensor"), QgsProcessing.TypeVectorPolygon, '',optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
 
