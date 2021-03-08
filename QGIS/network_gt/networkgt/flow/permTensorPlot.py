@@ -135,7 +135,7 @@ class permTensorPlot(QgsProcessingAlgorithm):
                 break
 
         nTraces = int(len(traces)/3)
-        feedback.pushInfo(QCoreApplication.translate('Info','Plotting %s pereambility ellipse(s).' %(nTraces)))
+        feedback.pushInfo(QCoreApplication.translate('Info','Plotting %s permeability ellipse(s).' %(nTraces)))
             
         if combine:
             traces = [traces]
