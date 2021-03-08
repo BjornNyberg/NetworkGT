@@ -133,8 +133,9 @@ class permTensorPlot(QgsProcessingAlgorithm):
             except Exception as e:
                 feedback.reportError(QCoreApplication.translate('Error',str(e)))
                 break
-        if len(traces) > 10:
-            feedback.reportError(QCoreApplication.translate('Info','Warning: Attempting to plot %s pereambility ellipses may take a long time to process.' %(len(traces))))
+
+        nTraces = int(len(traces)/3)
+        feedback.pushInfo(QCoreApplication.translate('Info','Plotting %s pereambility ellipse(s).' %(nTraces)))
             
         if combine:
             traces = [traces]
