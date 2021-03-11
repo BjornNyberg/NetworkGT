@@ -233,7 +233,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
         df['NcFreq'] = df['No. Connections'] / df4['Area']
         samples = df.index.tolist()
 
-        df4 = df4.ix[samples]
+        df4 = df4.loc[samples]
 
         r = df4['Circumference']/(np.pi*2.0)
 
@@ -243,7 +243,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
 
         df['1D Intensity'] = 0.0
 
-        df.ix[df.a==0.0,'1D Intensity'] = (df['E'] /(2.0*np.pi*r)) *(np.pi/2.0)
+        df.loc[df['a']==0.0,'1D Intensity'] = (df['E'] /(2.0*np.pi*r)) *(np.pi/2.0)
         del df['a']
 
         df['2D Intensity'] =  df3['Total Trace Length'] / df4['Area']
@@ -295,7 +295,7 @@ class TopologyParameters(QgsProcessingAlgorithm):
                 rows.append(feature.geometry().area())
             if ID in samples:
                 try:
-                    rows.extend(df.ix[ID].tolist()[2:])
+                    rows.extend(df.loc[ID].tolist()[2:])
                     fet.setAttributes(rows)
                     writer.addFeature(fet,QgsFeatureSink.FastInsert)
                 except Exception:
