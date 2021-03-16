@@ -112,20 +112,6 @@ class permTensor(QgsProcessingAlgorithm):
 
         new_fields = ['Kxx','Kxy','Kyy','K1 Azimuth','K1','K2','K1_K2']
 
-        if rotation > 0:
-            new_fields.extend(['Kii','Kij','Kjj'])
-
-        if not tF and Network.fields().indexFromName('Transmisiv') == -1:
-            feedback.reportError(QCoreApplication.translate('Error','Please calculate the transmissivity using the Aperture tool or define a new field - "Transmisiv"'))
-            return {}
-
-        if Network.fields().indexFromName('Sample_No_') == -1:
-            feedback.reportError(QCoreApplication.translate('Error','Branches input is invalid - please run the branches and nodes tool prior to calculting the permeability tensor'))
-            return {}
-
-        if TP.fields().indexFromName('Sample_No_') == -1:
-            feedback.reportError(QCoreApplication.translate('Error','Topology Parameters input is invalid - please run the topology parameters tool prior to calulcating the permeability tensor'))
-            return {}
 
         if self.Output in parameters:
             fields = QgsFields()
@@ -170,29 +156,20 @@ class permTensor(QgsProcessingAlgorithm):
             else:
                 geomF = geom.asMultiPolyline()
 
-            a,tL = 0,0
-            for part in geomF:
-                startx = None
-                for point in part:
-                    if startx == None:
-                        startx,starty = point
-                        continue
-                    endx,endy=point
+            start, end = geom[0][0], geom[-1][-1]
+            startx, starty = start
+            endx, endy = end
 
-                    dx = endx - startx
-                    dy =  endy - starty
+            dx = endx - startx
+            dy =  endy - starty
 
-                    l = math.sqrt((dx**2)+(dy**2))
-                    angle = math.degrees(math.atan2(dy,dx))
-                    bearing = (90.0 - angle) % 360
-                    a += bearing*l
-                    tL += l
-                    startx,starty = endx,endy
-
-            a = np.around(a/tL,decimals=4)
+            angle = math.degrees(math.atan2(dy,dx))
+            a = (90.0 - angle) % 360
 
             if a > 180:
                 a = np.around(a-180,decimals=4)
+
+            feedback.pushInfo(QCoreApplication.translate('Output', str(a)))
 
             bLen = geom.length()
             if tF:

@@ -134,26 +134,15 @@ class RoseDiagrams(QgsProcessingAlgorithm):
             else:
                 geom = geom.asMultiPolyline()
 
-            a,tL = 0,0
-            for part in geom:
-                startx = None
-                for point in part:
-                    if startx == None:
-                        startx,starty = point
-                        continue
-                    endx,endy=point
+            start, end = geom[0][0], geom[-1][-1]
+            startx, starty = start
+            endx, endy = end
 
-                    dx = endx - startx
-                    dy =  endy - starty
+            dx = endx - startx
+            dy =  endy - starty
 
-                    l = math.sqrt((dx**2)+(dy**2))
-                    angle = math.degrees(math.atan2(dy,dx))
-                    bearing = (90.0 - angle) % 360
-                    a += bearing*l
-                    tL += l
-                    startx,starty = endx,endy
-
-            mean = np.around(a/tL,decimals=4)
+            angle = math.degrees(math.atan2(dy,dx))
+            mean = (90.0 - angle) % 360
 
             if mean > 180:
                 mean = np.around(mean-180,decimals=4)
