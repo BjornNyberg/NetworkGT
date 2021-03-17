@@ -43,7 +43,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
         return self.tr("4. Topology")
 
     def shortHelpString(self):
-        return self.tr("Extracts the branches and nodes of a fracture network within a specified sample area/contour grid. The tool will also identify and classify the topology of each node (e.g. I,Y,X) and branch (e.g. II,IC,CC). \n The tool requires a fracture network lonestring and a sample area polygon/contour grid as inputs. The user has the option to also include an interpretaiton boundary polygon to help the tool identify branches with unknown topologies. The outputs are a Branches linestring and Nodes point layer with a predefined symbology applied to visualise their differnet topologies within the map extent. \n N.B. It is important that all the inputs have the same coordinate reference system as the project.\n Please refer to the help button for more information.")
+        return self.tr("Extracts the branches and nodes of a fracture network within a specified sample area/contour grid. The tool will also identify and classify the topology of each node (e.g. I,Y,X) and branch (e.g. II,IC,CC). \n The tool requires a fracture network linestring and a sample area polygon/contour grid as inputs. The user has the option to also include an interpretaiton boundary polygon to help the tool identify branches with unknown topologies. The outputs are a Branches linestring and Nodes point layer with a predefined symbology applied to visualise their differnet topologies within the map extent. \n N.B. It is important that all the inputs have the same coordinate reference system as the project.\n Please refer to the help button for more information.")
 
     def groupId(self):
         return "4. Topology"
@@ -157,7 +157,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
         unknown_nodes,point_data = [],[]
         c_points = {}
         Graph = {} #Store all node connections
-        P = 100000
+        P = 100000000
         feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Node Information'))
         extra_fields = []
         for field in templines['OUTPUT'].fields():
@@ -173,7 +173,10 @@ class BranchesNodes(QgsProcessingAlgorithm):
         for feature in features:
             try:
                 total += 1
-                geom = feature.geometry().asPolyline()
+                geom = feature.geometry()
+                if geom.length() < 0.0000001:
+                    continue
+                geom = geom.asPolyline()
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end

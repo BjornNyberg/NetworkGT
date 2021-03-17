@@ -14,7 +14,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 import os, math
 import processing as st
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField,QgsVectorFileWriter,QgsVectorLayer,QgsMultiLineString,QgsProcessingParameterField,QgsProcessingParameterBoolean, QgsFeature, QgsPointXY,QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry,QgsSpatialIndex, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty)
+from qgis.core import (QgsProcessingParameterDefinition,QgsField,QgsVectorFileWriter,QgsVectorLayer,QgsMultiLineString,QgsProcessingParameterField,QgsProcessingParameterBoolean, QgsFeature, QgsPointXY,QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry,QgsSpatialIndex, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty)
 from qgis.PyQt.QtGui import QIcon
 
 class RepairTool(QgsProcessingAlgorithm):
@@ -26,7 +26,7 @@ class RepairTool(QgsProcessingAlgorithm):
     xNodes ='Create X Nodes'
     mIntersections = 'Multiple Intersections'
     rCircles = 'Remove Circles'
-    #fc = 'Fast Compute'
+    med = 'Intermediate Step'
 
     def __init__(self):
         super().__init__()
@@ -44,7 +44,7 @@ class RepairTool(QgsProcessingAlgorithm):
         return self.tr("1. Digitising")
 
     def shortHelpString(self):
-        return self.tr("Repairs common topological erros in the digitisation of a fracture network. The tool will merge v nodes (2 endpoints) into a single lingestring geometry. \n If a V Node Angle is ´specified, the algorithm will create a new line at every vertex that exceeds the given angle threshold. Apply a Distance to Extend V Nodes option to create a y node at each given v node that exceeds the given angle threshold. Select the create X nodes option to create x nodes at each given v node that exceeds the given angle threshold. In addition, the user can apply a Remove circles option, to remove all circles or loops after merging and/or extending v node linestring geometries. \n The Fix Multiple Intersections option will create a topologically consistent fracture network by sequentially removing the smallest fracture network that intersections at a location with more than 4 nodes. If a 'Fault No' attribute exists, the fracture length will be calculated based on the groupped length provided by the 'Fault No' field. \n Consider using the GRASS v.clean tool prior to the repair tool to fix a broken/corrupt feature class layer. \n Please refer to the help button for more information.")
+        return self.tr("Repairs common topological erros in the digitisation of a fracture network. The tool will merge v nodes (2 endpoints) into a single linestring geometry. \n If a V Node Angle is ´specified, the algorithm will create a new line at every vertex that exceeds the given angle threshold. Apply a Distance to Extend V Nodes option to create a y node at each given v node that exceeds the given angle threshold. Select the create X nodes option to create x nodes at each given v node that exceeds the given angle threshold. In addition, the user can apply a Remove circles option, to remove all circles or loops after merging and/or extending v node linestring geometries. \n The Fix Multiple Intersections option will create a topologically consistent fracture network by sequentially removing the smallest fracture network that intersections at a location with more than 4 nodes. If a 'Fault No' attribute exists, the fracture length will be calculated based on the groupped length provided by the 'Fault No' field. \n Consider using the GRASS v.clean tool prior to the repair tool to fix a broken/corrupt feature class layer. \n Please refer to the help button for more information.")
 
     def groupId(self):
         return "1. Digitising"
@@ -72,6 +72,7 @@ class RepairTool(QgsProcessingAlgorithm):
             self.Repaired,
             self.tr("Repaired"),
             QgsProcessing.TypeVectorLine))
+
         self.addParameter(QgsProcessingParameterNumber(
             self.vDistance,
             self.tr("Distance to Extend V Nodes"),
@@ -88,8 +89,11 @@ class RepairTool(QgsProcessingAlgorithm):
                     self.tr("Remove Circles"),False))
         self.addParameter(QgsProcessingParameterBoolean(self.mIntersections,
                     self.tr("Fix Multiple Intersections"),False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.fc,
-        #                                 self.tr("Fast Compute"),False))
+
+        self.addParameter(QgsProcessingParameterFeatureSink(
+            self.med,
+            self.tr("Multiple Intersections Repair"),
+            QgsProcessing.TypeVectorLine, '',optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -105,11 +109,11 @@ class RepairTool(QgsProcessingAlgorithm):
         M = parameters[self.mIntersections]
         X = parameters[self.xNodes]
         rC = parameters[self.rCircles]
-        #fc = parameters[self.fc]
 
         P = 100000000 #Precision
 
         infc = parameters[self.Network]
+
         vdistance = parameters[self.vDistance]
 
         angle =  parameters[self.vAngle] #Orientation Threshold
@@ -129,16 +133,19 @@ class RepairTool(QgsProcessingAlgorithm):
         feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Node Information'))
         features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
 
-        vl = QgsVectorLayer("LineString?crs=%s"%(layer.sourceCrs().authid() ), "tempLines", "memory")
-        pr = vl.dataProvider()
-
         fields = QgsFields()
         for field in layer.fields():
             fields.append(QgsField(field.name(),field.type()))
-            pr.addAttributes([QgsField(field.name(),field.type())])
 
-        (writer, dest_id) = self.parameterAsSink(parameters, self.Repaired, context,
+        (writer2, dest_id2) = self.parameterAsSink(parameters, self.Repaired, context,
                                                fields, QgsWkbTypes.LineString, layer.sourceCrs())
+        if M:
+            if self.med not in parameters:
+                feedback.reportError(QCoreApplication.translate('Node Error', 'Error - Cannot apply "Fix Multiple Intersections" without creating a new vector file. Please change the "Multiple Intersections Repair" output to an absolute path or Create temporary layer option.'))
+                return {}
+
+            (writer, dest_id) = self.parameterAsSink(parameters, self.med, context,
+                                                     fields, QgsWkbTypes.LineString, layer.sourceCrs())
 
         fet = QgsFeature()
         Graph, W = {}, False
@@ -162,7 +169,6 @@ class RepairTool(QgsProcessingAlgorithm):
                     geom = geom.asPolyline()
                 if feature.geometry().length() < 0.000001:
                     continue
-
 
                 start,end = geom[0],geom[-1]
                 startx,starty=start
@@ -188,13 +194,11 @@ class RepairTool(QgsProcessingAlgorithm):
         total = templines['OUTPUT'].featureCount()
         total = 100.0/total
 
-        vl.startEditing()
         features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
         for enum,feature in enumerate(features):
             try:
                 if math.isnan(feature.geometry().length()): #Fix non-geometry points
                     geom = feature.geometry().asPolyline()
-                    W = True
                     points = []
                     for pnt in geom:
                         if math.isnan(pnt.x()) or math.isnan(pnt.y()):
@@ -207,21 +211,21 @@ class RepairTool(QgsProcessingAlgorithm):
                 else:
                     geom = feature.geometry()
 
-                if feature.geometry().length() < 0.000001:
+                if geom.length() < 0.000001:
                     continue
                 if total != -1:
                     feedback.setProgress(int(enum*total))
 
                 geom = geom.asPolyline()
 
+                rows = []
+                for field in layer.fields():
+                    rows.append(feature[field.name()])
+
                 start,end = geom[0],geom[-1]
                 startx,starty=start
                 endx,endy=end
                 branch = [(math.ceil(startx*P)/P,math.ceil(starty*P)/P),(math.ceil(endx*P)/P,math.ceil(endy*P)/P)]
-
-                rows = []
-                for field in layer.fields():
-                    rows.append(feature[field.name()])
 
                 vertices = [Graph[branch[0]],Graph[branch[1]]]
                 if 2 in vertices:
@@ -250,9 +254,10 @@ class RepairTool(QgsProcessingAlgorithm):
                     x,y = (math.ceil(pnt[0]*P)/P,math.ceil(pnt[1]*P)/P)
                     points.append(QgsPointXY(x,y))
                     geomFeat = QgsGeometry.fromPolylineXY(points)
+
                 fet.setGeometry(geomFeat)
                 fet.setAttributes(rows)
-                pr.addFeatures([fet])
+                writer2.addFeature(fet, QgsFeatureSink.FastInsert)
 
             except Exception as e:
                 feedback.pushInfo(QCoreApplication.translate('Create Lines','%s'%(e)))
@@ -278,6 +283,10 @@ class RepairTool(QgsProcessingAlgorithm):
         for enum,node in enumerate(G.nodes()): #TO DO split polyline at Y node intersections
             feedback.setProgress(int(enum*total))
             start = node
+            if start in Graph:
+                v = Graph[start]
+                if v > 2:
+                    continue
             prevOrient,end = None,None
             enum +=1
             points = []
@@ -302,7 +311,11 @@ class RepairTool(QgsProcessingAlgorithm):
                             end = curEnd
                             points = [QgsPointXY(curEnd[0],curEnd[1]),QgsPointXY(start[0],start[1])]
                             continue
-
+                        if start in Graph:
+                            v = Graph[start]
+                            if v > 2:
+                                c = False
+                                break
                         curOrient = calcOrient(curEnd,start)
                         curDiff = 180 - abs(abs(prevOrient - curOrient) - 180)
                         if curDiff < angle:
@@ -311,10 +324,12 @@ class RepairTool(QgsProcessingAlgorithm):
                             points.append(QgsPointXY(curEnd[0],curEnd[1]))
                             start = curEnd
                             c = True
+                            break
                 if not c:
                     start = None
                     prevOrient = prevOrientOrig
             while end:
+
                 c = False
                 edges = G.edges(end)
                 for edge in edges:
@@ -334,6 +349,12 @@ class RepairTool(QgsProcessingAlgorithm):
                             points = [QgsPointXY(curStart[0],curStart[1]),QgsPointXY(end[0],end[1])]
                             continue
 
+                        if end in Graph:
+                            v = Graph[end]
+                            if v > 2:
+                                c = False
+                                break
+
                         curOrient = calcOrient(end,curStart)
                         curDiff = 180 - abs(abs(prevOrient - curOrient) - 180)
                         if curDiff < angle:
@@ -342,6 +363,7 @@ class RepairTool(QgsProcessingAlgorithm):
                             end = curStart
                             points.insert(0,QgsPointXY(curStart[0],curStart[1]))
                             c = True
+                            break
                 if not c:
                     end = None
             if points:
@@ -382,10 +404,11 @@ class RepairTool(QgsProcessingAlgorithm):
                             end2 = geom[0]
                             endx2,endy2=end2
                             points = [QgsPointXY(startx,starty),QgsPointXY(endx2,endy2)]
+                            feedback.pushInfo(QCoreApplication.translate('Create Lines', str(points)))
                             poly = QgsGeometry.fromPolylineXY(points)
                             fet.setGeometry(poly)
                             fet.setAttributes(rows)
-                            pr.addFeatures([fet])
+                            writer2.addFeature(fet,QgsFeatureSink.FastInsert)
 
                             if not X:
                                 Graph2.append((startx,starty))
@@ -399,26 +422,25 @@ class RepairTool(QgsProcessingAlgorithm):
                             poly = QgsGeometry.fromPolylineXY(points)
                             fet.setGeometry(poly)
                             fet.setAttributes(rows)
-                            pr.addFeatures([fet])
+                            writer2.addFeature(fet,QgsFeatureSink.FastInsert)
 
                             if not X:
                                 Graph2.append((endx,endy))
                     fet.setGeometry(outGeom)
                     fet.setAttributes(rows)
-                    pr.addFeatures([fet])
+                    writer2.addFeature(fet,QgsFeatureSink.FastInsert)
             except Exception as e:
                 feedback.pushInfo(QCoreApplication.translate('Create Lines',str(e)))
                 continue
 
         del G
 
-        vl.commitChanges()
-
-        params = {'INPUT':vl,'LINES':vl,'OUTPUT':'memory:'}
-        outlines = st.run('native:splitwithlines',params,context=context,feedback=feedback)
-
-        fix = {}
         if M: #TO DO - simplify
+
+            params = {'INPUT': dest_id2, 'LINES': dest_id2, 'OUTPUT': 'memory:'}
+            outlines = st.run('native:splitwithlines', params, context=context, feedback=feedback)
+
+            fix = {}
 
             feedback.pushInfo(QCoreApplication.translate('Create Lines','Repairing Multiple Intersections'))
 
@@ -485,40 +507,42 @@ class RepairTool(QgsProcessingAlgorithm):
                         fLen = fLen[:-1]
                         threshold = fLen[-1]
 
-        feedback.pushInfo(QCoreApplication.translate('Create Lines','Creating Output'))
-        fet = QgsFeature()
-        features = outlines['OUTPUT'].getFeatures(QgsFeatureRequest())
-        for feature in features:
-            if feature.geometry().length() < 0.000001:
-                continue
-            geom = feature.geometry()
-            geomFeat = geom.asPolyline()
-            start,end = geomFeat[0],geomFeat[-1]
-            startx,starty=start
-            endx,endy=end
-            branch = [(math.ceil(startx*P)/P,math.ceil(starty*P)/P),(math.ceil(endx*P)/P,math.ceil(endy*P)/P)]
+            feedback.pushInfo(QCoreApplication.translate('Create Lines','Creating Output'))
+            fet = QgsFeature()
+            features = outlines['OUTPUT'].getFeatures(QgsFeatureRequest())
+            for feature in features:
+                if feature.geometry().length() < 0.000001:
+                    continue
+                geom = feature.geometry()
+                geomFeat = geom.asPolyline()
+                start,end = geomFeat[0],geomFeat[-1]
+                startx,starty=start
+                endx,endy=end
+                branch = [(math.ceil(startx*P)/P,math.ceil(starty*P)/P),(math.ceil(endx*P)/P,math.ceil(endy*P)/P)]
 
-            if branch[0] in fix:
-                data = fix[branch[0]]
-                if branch[1] in data:
-                    if len(geomFeat) > 2:
-                        geomFeat = geomFeat[1:]
-                        geom = QgsGeometry.fromPolylineXY(geomFeat)
-                    else:
-                        continue
-            if branch[1] in fix:
-                data = fix[branch[1]]
-                if branch[0] in data:
-                    if len(geomFeat) > 2:
-                        geomFeat = geomFeat[:-1]
-                        geom = QgsGeometry.fromPolylineXY(geomFeat)
-                    else:
-                        continue
-            rows = []
-            for field in layer.fields():
-                rows.append(feature[field.name()])
-            fet.setGeometry(geom)
-            fet.setAttributes(rows)
-            writer.addFeature(fet,QgsFeatureSink.FastInsert)
+                if branch[0] in fix:
+                    data = fix[branch[0]]
+                    if branch[1] in data:
+                        if len(geomFeat) > 2:
+                            geomFeat = geomFeat[1:]
+                            geom = QgsGeometry.fromPolylineXY(geomFeat)
+                        else:
+                            continue
+                if branch[1] in fix:
+                    data = fix[branch[1]]
+                    if branch[0] in data:
+                        if len(geomFeat) > 2:
+                            geomFeat = geomFeat[:-1]
+                            geom = QgsGeometry.fromPolylineXY(geomFeat)
+                        else:
+                            continue
+                rows = []
+                for field in layer.fields():
+                    rows.append(feature[field.name()])
+                fet.setGeometry(geom)
+                fet.setAttributes(rows)
+                writer.addFeature(fet,QgsFeatureSink.FastInsert)
 
-        return {self.Repaired:dest_id}
+            return {self.Repaired:dest_id2,self.med:dest_id}
+        else:
+            return {self.Repaired:dest_id2}
