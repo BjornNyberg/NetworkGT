@@ -15,7 +15,7 @@ import os, subprocess, tempfile
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsProcessingAlgorithm
 from qgis.utils import iface
-from PyQt5.QtWidgets import QMessageBox, QFileDialog
+from PyQt5.QtWidgets import QMessageBox, QFileDialog,QInputDialog,QLineEdit
 
 
 class configureNetworkGT(QgsProcessingAlgorithm):
@@ -62,8 +62,8 @@ class configureNetworkGT(QgsProcessingAlgorithm):
                 import ctypes
                 is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
 
-            modules = ['cython','numpy','scipy','scikit-image','sympy','simpledbf']
-            moduleVersions = ['pip','pandas==0.25.1','chart_studio','meshio == 2.3.8','plotly>=4.11.0','networkx==2.5']
+            modules = ['cython','numpy','scipy','scikit-image','sympy']
+            moduleVersions = ['pip','pandas==0.25.1','meshio == 2.3.8','chart_studio','plotly>=4.11.0','networkx==2.5']
 
             if not is_admin:
                 feedback.reportError(QCoreApplication.translate('Warning',"Attempted to install necessary python modules without admin access. Certain 'Digitising' and 'Flow' tools may not work."))
@@ -112,4 +112,23 @@ class configureNetworkGT(QgsProcessingAlgorithm):
                     f.write(str(fname))
             else:
                 feedback.reportError(QCoreApplication.translate('Warning','Please download the Gmsh program at http://gmsh.info/ or visit the NetworkGT website for more help at https://github.com/BjornNyberg/NetworkGT/wiki/Installation'))
+
+        reply = QMessageBox.question(iface.mainWindow(), 'Install NetworkGT Dependencies',
+                 'Do you want to configure Plotly Chart Studio?', QMessageBox.Yes, QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            import chart_studio
+            uname,key='name','key'
+            chart_studio.tools.set_credentials_file(username=uname, api_key=key)
+            chart_studio.tools.set_config_file(world_readable=True, sharing='public')
+            uname, button = QInputDialog.getText(iface.mainWindow(), "Username","Enter Plotly Chart Studio Username", QLineEdit.Normal, "")
+            key, button2 = QInputDialog.getText(iface.mainWindow(), "API Key", "Enter Plotly Chart Studio API Key", QLineEdit.Normal, "")
+
+            if button and button2 and uname != '' and key != '':
+                chart_studio.tools.set_credentials_file(username=uname, api_key=key)
+                chart_studio.tools.set_config_file(world_readable=True, sharing='public')
+            else:
+                feedback.reportError(QCoreApplication.translate('Warning',
+                                                                'Please get a username and API key from https://chart-studio.plotly.com/settings/api or visit the NetworkGT website for more help at https://github.com/BjornNyberg/NetworkGT/wiki/Installation'))
+
         return {}

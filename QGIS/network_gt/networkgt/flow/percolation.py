@@ -77,6 +77,7 @@ class Percolation(QgsProcessingAlgorithm):
 
         try:
             import plotly.graph_objs as go
+            import chart_studio.plotly as py
         except Exception:
             feedback.reportError(QCoreApplication.translate('Error','Plotting will be disabled as plotly module did not load - please install the necessary dependencies.'))
             plot = False
@@ -244,7 +245,10 @@ class Percolation(QgsProcessingAlgorithm):
                   )
 
             fig = go.Figure(data=traces, layout=layout)
-            fig.show()
+            try:
+                py.plot(fig, filename='Percolation', auto_open=True)
+            except Exception:
+                fig.show()
 
         if self.Output in parameters:
             return {self.Output: dest_id}

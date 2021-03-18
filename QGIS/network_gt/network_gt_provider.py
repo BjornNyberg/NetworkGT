@@ -56,6 +56,7 @@ from .networkgt.topology.Clusters import Clusters
 from .networkgt.topology.Topology_Parameters import TopologyParameters
 from .networkgt.topology.Branches_Nodes import BranchesNodes
 from .networkgt.topology.ShortestPathway import ShortestPathway
+from .networkgt.topology.Relationships import Relationships
 
 #Digitising Tools
 from .networkgt.digitising.SnapYNodes import SnapYNodes
@@ -125,6 +126,7 @@ class NetworkGTProvider(QgsProcessingProvider):
         self.addAlgorithm(SimplifyNetwork())
         self.addAlgorithm(GridCalc())
         self.addAlgorithm(GridStats())
+        self.addAlgorithm(Relationships())
 
 
     def id(self):

@@ -87,6 +87,7 @@ class LineFrequency(QgsProcessingAlgorithm):
             import networkx as nx
             import numpy as np
             import plotly.graph_objs as go
+            import chart_studio.plotly as py
             import pandas as pd
             from math import ceil
 
@@ -461,7 +462,10 @@ class LineFrequency(QgsProcessingAlgorithm):
                              height = 50,
                              fill = dict(color=['rgb(235, 193, 238)', 'rgba(228, 222, 249, 0.65)']))))
 
-            fig = dict(data=traces, layout=layout)
-            fig.show()
+            fig = go.Figure(traces, layout=layout)
+            try:
+                py.plot(fig, filename='Line Frequency', auto_open=True)
+            except Exception:
+                fig.show()
 
         return {}

@@ -62,6 +62,7 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
             import numpy as np
             from scipy.stats import norm,lognorm,mstats,kurtosis,skew
             import plotly.graph_objs as go
+            import chart_studio.plotly as py
         except Exception as e:
             feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
             feedback.reportError(QCoreApplication.translate('Error',' '))
@@ -180,7 +181,9 @@ class DistributionAnalysis(QgsProcessingAlgorithm):
                 range=[-maxLNSD,maxLNSD]
             ))
 
-        fig = go.Figure(data=[trace2,trace3,trace4,trace5],layout=layout)
-        fig.show()
-
+        fig = go.Figure([trace2, trace3, trace4, trace5], layout=layout)
+        try:
+            py.plot(fig, filename='Distribution Analysis', auto_open=True)
+        except Exception:
+            fig.show()
         return {}

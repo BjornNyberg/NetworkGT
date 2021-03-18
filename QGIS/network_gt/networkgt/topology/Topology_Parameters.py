@@ -96,6 +96,8 @@ class TopologyParameters(QgsProcessingAlgorithm):
 
         try:
             import plotly.graph_objs as go
+            import chart_studio.plotly as py
+            from plotly.subplots import make_subplots
         except Exception:
             feedback.reportError(QCoreApplication.translate('Error','Plotting will be disabled as plotly module did not load - please install the necessary dependencies.'))
             plot = False
@@ -308,16 +310,20 @@ class TopologyParameters(QgsProcessingAlgorithm):
 
         if plot:
             ID = ['Sample No. %s' %(s) for s in samples]
-            iyxPlot = [go.Scatterternary(a = df['I'],b = df['Y'],c = df['X'],mode='markers',name='I + Y + X',text=ID,marker = dict(size = 15))]
 
             p1s = [(0,0.75,0.25),(0, 0.66666, 0.33333),(0,0.562500,0.437500),(0,0.429,0.571),(0,0.2,0.8)]
             p2s = [(0.2, 0.8, 0),(0.273,0.727,0),(0.368,0.632,0),(0.5,0.5,0),(0.692,0.308,0)]
             text = [1.0,1.2,1.4,1.6,1.8]
 
-            for p1,p2,t in zip(p1s,p2s,text):
-                iyxPlot.append(go.Scatterternary(a = [p1[1],p2[1]],b = [p1[2],p2[2]],c = [p1[0],p2[0]],name=str(t),text=str(t),marker = dict(size = 0,color='gray')))
+            fig = make_subplots(rows=1, cols=2, specs=[[{"type": "ternary"}, {"type": "ternary"}]])
 
-            branchPlot = [go.Scatterternary(a = df['I - I'],b = df['C - I'],c = df['C - C'],mode='markers',name='I-I + C-I + C-C',text=ID,marker = dict(size = 15))]
+            fig.add_trace(go.Scatterternary(a=df['I'], b=df['Y'], c=df['X'], mode='markers', name='I + Y + X', text=ID,
+                                         marker=dict(size=15)),row=1,col=1)
+
+            for p1,p2,t in zip(p1s,p2s,text):
+                fig.add_trace(go.Scatterternary(a = [p1[1],p2[1]],b = [p1[2],p2[2]],c = [p1[0],p2[0]],name=str(t),text=str(t),marker = dict(size = 0,color='gray')),row=1,col=1)
+
+            branchPlot = fig.add_trace(go.Scatterternary(a = df['I - I'],b = df['C - I'],c = df['C - C'],mode='markers',name='I-I + C-I + C-C',text=ID,marker = dict(size = 15)),row=1,col=2)
 
             p = [(0,1,0),(0.01,0.81,0.18),(0.04,0.64,0.32),(0.09,0.49,0.42),(0.16,0.36,0.48),(0.25,0.25,0.5),
              (0.36,0.16,0.48),(0.49,0.09,0.42),(0.64,0.04,0.32),(0.81,0.01,0.18),(1,0,0)]
@@ -328,36 +334,51 @@ class TopologyParameters(QgsProcessingAlgorithm):
                 y.append(i[1])
                 z.append(i[2])
 
-            branchPlot.append(go.Scatterternary(a = x,b = z,c = y,name='Trend',marker = dict(size = 0,color='gray')))
+            fig.add_trace(go.Scatterternary(a = x,b = z,c = y,name='Trend',marker = dict(size = 0,color='gray')),row=1,col=2)
 
-            def layoutTemp(x_title,y_title,z_title):
-                layout = {'ternary':dict(
+            layout = {'ternary':dict(
+                sum=100,
+                aaxis=dict(
+                    title='I',
+                    ticksuffix='%',
+                ),
+                baxis=dict(
+                    title='Y',
+                    ticksuffix='%'
+                ),
+                caxis=dict(
+                    title='X',
+                    ticksuffix='%'
+                ),domain={'row':0,'column':0}),
+                'ternary2': dict(
                     sum=100,
                     aaxis=dict(
-                        title=x_title,
+                        title='I',
                         ticksuffix='%',
                     ),
                     baxis=dict(
-                        title=y_title,
+                        title='C - I',
                         ticksuffix='%'
                     ),
                     caxis=dict(
-                        title=z_title,
+                        title='C - C',
                         ticksuffix='%'
-                    ),),}
-                return layout
+                    ),domain={'row':0,'column':1})
+                }
+
 
             ngtPath = 'https://raw.githubusercontent.com/BjornNyberg/NetworkGT/master/Images/NetworkGT_Logo1.png'
-            lay = layoutTemp('I','Y','X')
-            lay['images']= [dict(source=ngtPath,xref="paper", yref="paper", x=1.0, y=1.0,sizex=0.2, sizey=0.2, xanchor="right", yanchor="bottom")]
 
-            fig = go.Figure(data=iyxPlot,layout=lay)
-            fig.show(filename='fig1')
+            layout['images'] = [dict(source=ngtPath, xref="paper", yref="paper", x=1.0, y=1.0, sizex=0.2, sizey=0.2,
+                                  xanchor="right", yanchor="bottom")]
 
-            lay = layoutTemp('I - I','C - I','C - C')
-            lay['images']= [dict(source=ngtPath,xref="paper", yref="paper", x=1.0, y=1.0,sizex=0.2, sizey=0.2, xanchor="right", yanchor="bottom")]
-            fig2 = go.Figure(data=branchPlot,layout=lay)
-            fig2.show(filename='fig2')
+            fig.update_layout(layout)
+
+            try:
+                py.plot(fig, filename='Ternary Diagram', auto_open=True)
+            except Exception:
+
+                fig.show()
 
         self.dest_id=dest_id
         return {self.TP:dest_id}

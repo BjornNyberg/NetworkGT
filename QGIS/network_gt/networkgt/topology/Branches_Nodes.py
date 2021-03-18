@@ -157,7 +157,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
         unknown_nodes,point_data = [],[]
         c_points = {}
         Graph = {} #Store all node connections
-        P = 100000000
+        P = 10000
         feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Node Information'))
         extra_fields = []
         for field in templines['OUTPUT'].fields():

@@ -94,6 +94,7 @@ class Histogram(QgsProcessingAlgorithm):
 
         try:
             import plotly.graph_objs as go
+            import chart_studio.plotly as py
         except Exception as e:
             feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
             feedback.reportError(QCoreApplication.translate('Error',' '))
@@ -176,8 +177,11 @@ class Histogram(QgsProcessingAlgorithm):
             layout = go.Layout(images=[dict(source=ngtPath,xref="paper", yref="paper", x=1.0, y=1.0,sizex=0.2, sizey=0.2, xanchor="right", yanchor="bottom")], barmode=mode,xaxis=dict(range=[minX,maxX]))
         else:
             layout = go.Layout(images=[dict(source=ngtPath,xref="paper", yref="paper", x=1.0, y=1.0,sizex=0.2, sizey=0.2, xanchor="right", yanchor="bottom")],barmode=mode)
+        fig = go.Figure(traces, layout=layout)
 
-        fig = go.Figure(data=traces, layout=layout)
-        fig.show()
+        try:
+            py.plot(fig, filename='Histogram', auto_open=True)
+        except Exception as e:
+            fig.show()
 
         return {}

@@ -86,6 +86,7 @@ class RoseDiagrams(QgsProcessingAlgorithm):
             import pandas as pd
             import numpy as np
             import plotly.graph_objs as go
+            import chart_studio.plotly as py
         except Exception:
             feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
             feedback.reportError(QCoreApplication.translate('Error',' '))
@@ -199,7 +200,10 @@ class RoseDiagrams(QgsProcessingAlgorithm):
                 title='Weighted Rose Diagram',font=dict(size=16),legend=dict(font=dict(size=16)),
                 polar=dict(angularaxis=dict(direction="clockwise",tickfont=dict(size=14)),),)
 
-        fig = go.Figure(data=final, layout=layout)
-        fig.show()
+        fig = go.Figure(final, layout=layout)
+        try:
+            py.plot(fig, filename='Rose Diagram', auto_open=True)
+        except Exception as e:
+            fig.show()
 
         return {}

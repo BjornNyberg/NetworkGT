@@ -72,6 +72,7 @@ class permTensorPlot(QgsProcessingAlgorithm):
         try:
             import plotly.graph_objs as go
             import numpy as np
+            import chart_studio.plotly as py
         except Exception:
             feedback.reportError(QCoreApplication.translate('Error','Error please install the necessary dependencies.'))
             return {}
@@ -154,7 +155,10 @@ class permTensorPlot(QgsProcessingAlgorithm):
                   yaxis = dict(range=[-r, r]),
                   width=650, height=650,)
 
-            fig = go.Figure(data=trace, layout=layout)
-            fig.show()
+            fig = go.Figure(trace, layout=layout)
+            try:
+                py.plot(fig, filename='Tensor Plot', auto_open=True)
+            except Exception:
+                fig.show()
 
         return {}

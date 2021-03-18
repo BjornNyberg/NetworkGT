@@ -108,6 +108,7 @@ class Tortuosity(QgsProcessingAlgorithm):
 
         try:
             import plotly.graph_objs as go
+            import chart_studio.plotly as py
         except Exception:
             feedback.reportError(QCoreApplication.translate('Error','Plotting will be disabled as plotly module did not load - please install the necessary dependencies. '))
             plot = False
@@ -548,8 +549,10 @@ class Tortuosity(QgsProcessingAlgorithm):
 
                 showlegend= True
             )
-
-            fig = dict(data=traces, layout=layout)
-            fig.show()
+            fig = go.Figure(traces, layout=layout)
+            try:
+                py.plot(fig, filename='Tortuosity', auto_open=True)
+            except Exception:
+                fig.show()
 
         return {self.Tortuosity:dest_id}
