@@ -40,6 +40,7 @@ from .networkgt.sampling.Simple_Grid import ContourGrid
 from .networkgt.sampling.Grid_Calculator import GridCalc
 from .networkgt.sampling.Grid_Statistics import GridStats
 from .networkgt.sampling.Simple_Line_Grid import LineGrid
+from .networkgt.sampling.Grid_Plots import GridPlot
 
 #Geometry Tools
 from .networkgt.geometry.Line_Frequency import LineFrequency
@@ -126,6 +127,7 @@ class NetworkGTProvider(QgsProcessingProvider):
         self.addAlgorithm(SimplifyNetwork())
         self.addAlgorithm(GridCalc())
         self.addAlgorithm(GridStats())
+        self.addAlgorithm(GridPlot())
         self.addAlgorithm(Relationships())
 
 

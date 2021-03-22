@@ -176,9 +176,7 @@ class ShortestPathway(QgsProcessingAlgorithm):
             except Exception as e:
                 feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
 
-        total = 100.0/Network.featureCount()
-
-
+        total = 100.0/explode['OUTPUT'].featureCount()
 
         feedback.pushInfo(QCoreApplication.translate('Model','Building Graph'))
         for enum,feature in enumerate(explode['OUTPUT'].getFeatures()): #Build Graph
