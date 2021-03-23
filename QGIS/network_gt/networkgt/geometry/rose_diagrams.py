@@ -139,6 +139,10 @@ class RoseDiagrams(QgsProcessingAlgorithm):
             else:
                 geom = geom.asMultiPolyline()
 
+            if len(geom) == 0:
+                feedback.reportError(QCoreApplication.translate('Error','Warning - skipping null geometry linestring.'))
+                continue
+
             x,y = 0,0
             for part in geom:
                 startx = None
@@ -176,7 +180,6 @@ class RoseDiagrams(QgsProcessingAlgorithm):
         bins = float(bins)
         final = []
         values = []
-        feedback.reportError(QCoreApplication.translate('Error',str(data)))
 
         for k,v in data.items():
 

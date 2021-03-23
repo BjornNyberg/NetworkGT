@@ -156,6 +156,10 @@ class permTensor(QgsProcessingAlgorithm):
             else:
                 geomF = geom.asMultiPolyline()
 
+            if len(geomF) == 0:
+                feedback.reportError(QCoreApplication.translate('Error','Warning - skipping null geometry linestring.'))
+                continue
+
             x,y = 0,0
             for part in geomF:
                 startx = None
