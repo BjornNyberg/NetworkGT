@@ -156,18 +156,30 @@ class permTensor(QgsProcessingAlgorithm):
             else:
                 geomF = geom.asMultiPolyline()
 
-            start, end = geomF[0][0], geomF[-1][-1]
-            startx, starty = start
-            endx, endy = end
+            x,y = 0,0
+            for part in geomF:
+                startx = None
+                for point in part:
+                    if startx == None:
+                        startx,starty = point
+                        continue
+                    endx,endy=point
 
-            dx = endx - startx
-            dy =  endy - starty
+                    dx = endx - startx
+                    dy =  endy - starty
 
-            angle = math.degrees(math.atan2(dy,dx))
-            a = (90.0 - angle) % 360
+                    l = math.sqrt((dx**2)+(dy**2))
+                    angle = math.degrees(math.atan2(dy,dx))
+                    x += math.cos(math.radians(angle)) * l
+                    y += math.sin(math.radians(angle)) * l
 
+                    startx,starty = endx,endy
+
+            a = 90 - np.around(math.degrees(math.atan2(y, x)), decimals=4)
             if a > 180:
-                a = np.around(a-180,decimals=4)
+                a -= 180
+            elif a < 0:
+                a += 180
 
             bLen = geom.length()
             if tF:

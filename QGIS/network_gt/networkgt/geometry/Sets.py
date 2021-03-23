@@ -145,40 +145,30 @@ class Sets(QgsProcessingAlgorithm):
             else:
                 geom = geom.asMultiPolyline()
 
-        ## TODO - FIX multiple vertex angles
-       #     a,tL = 0,0
-       #     for part in geom:
-       #         startx = None
-       #         for point in part:
-       #             if startx == None:
-       #                 startx,starty = point
-       #                 continue
-       #             endx,endy=point
+            x, y = 0, 0
+            for part in geom:
+                startx = None
+                for point in part:
+                    if startx == None:
+                        startx, starty = point
+                        continue
+                    endx, endy = point
 
-       #             dx = endx - startx
-       #             dy =  endy - starty
+                    dx = endx - startx
+                    dy = endy - starty
 
-       #             l = math.sqrt((dx**2)+(dy**2))
-       #             angle = math.degrees(math.atan2(dy,dx))
-       #             bearing = (90.0 - angle) % 360
+                    l = math.sqrt((dx ** 2) + (dy ** 2))
+                    angle = math.degrees(math.atan2(dy, dx))
+                    x += math.cos(math.radians(angle)) * l
+                    y += math.sin(math.radians(angle)) * l
 
-       #             a += bearing*l
-       #             tL += l
-       #             startx,starty = endx,endy
-            # mean = np.around(a/tL,decimals=4)
+                    startx, starty = endx, endy
 
-            start, end = geom[0][0], geom[-1][-1]
-            startx, starty = start
-            endx, endy = end
-
-            dx = endx - startx
-            dy =  endy - starty
-
-            angle = math.degrees(math.atan2(dy,dx))
-            mean = (90.0 - angle) % 360
-
+            mean = 90 - np.around(math.degrees(math.atan2(y, x)), decimals=4)
             if mean > 180:
-                mean = np.around(mean-180,decimals=4)
+                mean -= 180
+            elif mean < 0:
+                mean += 180
 
             value = -1
             for enum, b in enumerate(bins):

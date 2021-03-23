@@ -25,6 +25,7 @@ class RoseDiagrams(QgsProcessingAlgorithm):
     Group = 'Group'
     SR ='Equal Area'
     P ='Percentage'
+    R = 'Reverse'
 
     def __init__(self):
         super().__init__()
@@ -76,9 +77,11 @@ class RoseDiagrams(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterField(self.Group,
                                 self.tr('Group Field'), parentLayerParameterName=self.FN, type=QgsProcessingParameterField.Any, optional=True))
         self.addParameter(QgsProcessingParameterBoolean(self.SR,
-                    self.tr("Equal Area Rose Diagram"),False))
+                    self.tr("Equal Area"),False))
         self.addParameter(QgsProcessingParameterBoolean(self.P,
                     self.tr("Percentage"),False))
+        self.addParameter(QgsProcessingParameterBoolean(self.R,
+                                                        self.tr("Plot Reciprocal Angle"), False))
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -99,6 +102,7 @@ class RoseDiagrams(QgsProcessingAlgorithm):
         bins = parameters[self.Bins]
         SR = parameters[self.SR]
         P = parameters[self.P]
+        R = parameters[self.R]
 
         feedback.pushInfo(QCoreApplication.translate('RoseDiagram','Reading Data'))
 
@@ -135,18 +139,30 @@ class RoseDiagrams(QgsProcessingAlgorithm):
             else:
                 geom = geom.asMultiPolyline()
 
-            start, end = geom[0][0], geom[-1][-1]
-            startx, starty = start
-            endx, endy = end
+            x,y = 0,0
+            for part in geom:
+                startx = None
+                for point in part:
+                    if startx == None:
+                        startx,starty = point
+                        continue
+                    endx,endy=point
 
-            dx = endx - startx
-            dy =  endy - starty
+                    dx = endx - startx
+                    dy =  endy - starty
 
-            angle = math.degrees(math.atan2(dy,dx))
-            mean = (90.0 - angle) % 360
+                    l = math.sqrt((dx**2)+(dy**2))
+                    angle = math.degrees(math.atan2(dy,dx))
+                    x += math.cos(math.radians(angle)) * l
+                    y += math.sin(math.radians(angle)) * l
 
+                    startx,starty = endx,endy
+
+            mean = 90 - np.around(math.degrees(math.atan2(y, x)), decimals=4)
             if mean > 180:
-                mean = np.around(mean-180,decimals=4)
+                mean -= 180
+            elif mean < 0:
+                mean += 180
 
             if ID in data:
                 data[ID].append((mean,W))
@@ -159,6 +175,9 @@ class RoseDiagrams(QgsProcessingAlgorithm):
 
         bins = float(bins)
         final = []
+        values = []
+        feedback.reportError(QCoreApplication.translate('Error',str(data)))
+
         for k,v in data.items():
 
             counts = dict.fromkeys(np.arange(bins,360+bins,bins),0)
@@ -174,10 +193,12 @@ class RoseDiagrams(QgsProcessingAlgorithm):
                     num2 = num1 + 180
                 else:
                     num2 = num1 - 180
+
                 k1 = int(math.ceil(num1 / bins)) * bins
-                k2 = int(math.ceil(num2 / bins)) * bins
-                counts[k1] += num[1] #Length weighted polar plot
-                counts[k2] += num[1]
+                counts[k1] += num[1]  # Length weighted polar plot
+                if R:
+                    k2 = int(math.ceil(num2 / bins)) * bins
+                    counts[k2] += num[1]
 
             count = list(counts.values())
             if SR:
@@ -194,12 +215,18 @@ class RoseDiagrams(QgsProcessingAlgorithm):
             final.append(bars)
 
         ngtPath = 'https://raw.githubusercontent.com/BjornNyberg/NetworkGT/master/Images/NetworkGT_Logo1.png'
-
-        layout = go.Layout(
-                images=[dict(source=ngtPath,xref="paper", yref="paper", x=0.85, y=0.05,sizex=0.2, sizey=0.2, xanchor="right", yanchor="bottom")],
-                title='Weighted Rose Diagram',font=dict(size=16),legend=dict(font=dict(size=16)),
-                polar=dict(angularaxis=dict(direction="clockwise",tickfont=dict(size=14)),),)
-
+        if R:
+            layout = go.Layout(
+                images=[dict(source=ngtPath, xref="paper", yref="paper", x=0.85, y=0.05, sizex=0.2, sizey=0.2,
+                             xanchor="right", yanchor="bottom")],
+                title='Weighted Rose Diagram', font=dict(size=16), legend=dict(font=dict(size=16)),
+                polar=dict(angularaxis=dict(direction="clockwise", tickfont=dict(size=14)), ), )
+        else:
+            layout = go.Layout(
+                    images=[dict(source=ngtPath,xref="paper", yref="paper", x=0.85, y=0.05,sizex=0.2, sizey=0.2, xanchor="right", yanchor="bottom")],
+                    title='Weighted Rose Diagram',font=dict(size=16),legend=dict(font=dict(size=16)),
+                    polar=dict(angularaxis=dict(direction="clockwise",tickfont=dict(size=14)),sector = [-90,90]),)
+            
         fig = go.Figure(final, layout=layout)
         try:
             py.plot(fig, filename='Rose Diagram', auto_open=True)
