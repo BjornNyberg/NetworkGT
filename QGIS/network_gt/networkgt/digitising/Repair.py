@@ -404,7 +404,7 @@ class RepairTool(QgsProcessingAlgorithm):
                             end2 = geom[0]
                             endx2,endy2=end2
                             points = [QgsPointXY(startx,starty),QgsPointXY(endx2,endy2)]
-                            feedback.pushInfo(QCoreApplication.translate('Create Lines', str(points)))
+
                             poly = QgsGeometry.fromPolylineXY(points)
                             fet.setGeometry(poly)
                             fet.setAttributes(rows)
