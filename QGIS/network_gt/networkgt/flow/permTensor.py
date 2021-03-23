@@ -156,7 +156,7 @@ class permTensor(QgsProcessingAlgorithm):
             else:
                 geomF = geom.asMultiPolyline()
 
-            start, end = geom[0][0], geom[-1][-1]
+            start, end = geomF[0][0], geomF[-1][-1]
             startx, starty = start
             endx, endy = end
 
