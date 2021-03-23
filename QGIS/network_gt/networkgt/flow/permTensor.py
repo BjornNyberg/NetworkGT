@@ -169,8 +169,6 @@ class permTensor(QgsProcessingAlgorithm):
             if a > 180:
                 a = np.around(a-180,decimals=4)
 
-            feedback.pushInfo(QCoreApplication.translate('Output', str(a)))
-
             bLen = geom.length()
             if tF:
                 t =  feature[tF]
