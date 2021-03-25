@@ -13,6 +13,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
 import os
 import processing as st
+import numpy as np
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (edit,QgsProcessingParameterBoolean,QgsField, QgsFeature, QgsPointXY, QgsProcessingParameterNumber, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
@@ -81,8 +82,8 @@ class ContourGrid(QgsProcessingAlgorithm):
             self.tr("Rotation"),
             QgsProcessingParameterNumber.Double,
             0.0,minValue=0.0,maxValue=90.0))
-        self.addParameter(QgsProcessingParameterBoolean(self.Within,
-                                                        self.tr("Grid Within Interpretation Boundary"), False))
+        self.addParameter(QgsProcessingParameterBoolean(self.Within, self.tr("Grid Within Interpretation Boundary"), False))
+
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.Grid,
             self.tr("Grid"),
@@ -91,10 +92,41 @@ class ContourGrid(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
 
         IB = self.parameterAsVectorLayer(parameters, self.IB, context)
+
+        features = IB.selectedFeatures()
+
+        if len(features) == 0:
+            features = IB.getFeatures()
+            extent = IB.extent()
+        else:
+            extent = IB.boundingBoxOfSelected()
+
+        if IB.wkbType() == 3 or IB.wkbType() == 6:
+            field_check = IB.fields().indexFromName('2D Intensity')
+            if field_check != -1:
+                for enum,feature in enumerate(IB.getFeatures()):
+                    intensity = round(feature['2D Intensity'], 4)
+                if enum > 1:
+                    feedback.reportError(QCoreApplication.translate('Error','Warning - Require one topology parameters dataset for the entire region to calculate suggested radius and spacing.'))
+                    return {}
+                radius = round((1 / intensity) * 4, 4)
+                spacing = round(radius / 4.0, 4)
+                feedback.reportError(QCoreApplication.translate('Interpretation Boundary','Info - Applying a calculated sampling radius of %s and a spacing of %s based on a 2D intensity of %s. It is recommended to review and adjust parameters based on branch and node results.' % (radius, spacing, intensity)))
+                cursorm = [feature.geometry() for feature in features]
+            else:
+                feedback.reportError(QCoreApplication.translate('Error', 'Warning - Require a topology parameters or fracture trace lengths input to calculate suggested sampling radius and spacing.'))
+                return {}
+        else:
+            spacing = parameters[self.Width]
+            radius = parameters[self.Radius]
+            cursorm = [QgsGeometry.fromRect(extent)]
+
         rotation = parameters[self.Rotation]
-        spacing = parameters[self.Width]
-        radius = parameters[self.Radius]
         w = parameters[self.Within]
+
+        if radius < spacing:
+            feedback.reportError(QCoreApplication.translate('Error', 'Warning - Contour grid spacing is less than the specified sampling radius.'))
+            return {}
 
         if rotation == 0.0:
             r = 0.00001
@@ -115,14 +147,6 @@ class ContourGrid(QgsProcessingAlgorithm):
         (writer, dest_id) = self.parameterAsSink(parameters, self.Grid, context,
                                                                 fs, QgsWkbTypes.Polygon, IB.sourceCrs())
 
-        features = IB.selectedFeatures()
-
-        if len(features) == 0:
-            features = IB.getFeatures()
-            extent = IB.extent()
-        else:
-            extent = IB.boundingBoxOfSelected()
-
         feedback.pushInfo(QCoreApplication.translate('TempFiles','Creating Grid'))
 
         parameters = {'TYPE':2,'EXTENT':extent,'HSPACING':spacing,'VSPACING':spacing,'HOVERLAY':0,'VOVERLAY': 0, 'CRS': IB, 'OUTPUT':'memory:'}
@@ -139,19 +163,6 @@ class ContourGrid(QgsProcessingAlgorithm):
         outFeats = rotate['OUTPUT']
         total = outFeats.featureCount()
         total = 100.0/total
-
-        if IB.wkbType() == 3 or IB.wkbType() == 6:
-            cursorm = [feature.geometry() for feature in features]
-        else:
-            extent = None
-            for enum,feature in enumerate(outFeats.getFeatures()):
-                if total != -1:
-                    feedback.setProgress(int(enum*total))
-                if extent == None:
-                    extent = feature.geometry()
-                else:
-                    extent = extent.combine(feature.geometry())
-            cursorm = [extent]
 
         fet = QgsFeature()
         for enum,feature in enumerate(outFeats.getFeatures()):
