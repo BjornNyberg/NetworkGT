@@ -126,38 +126,37 @@ class BranchesNodes(QgsProcessingAlgorithm):
         feedback.pushInfo(QCoreApplication.translate('TempFiles','Creating Temporary Files'))
 
         params = {'INPUT':infc,'LINES':infc,'OUTPUT':'memory:'}
-        templines = st.run('native:splitwithlines',params,context=context,feedback=feedback)
+        templines = st.run('native:splitwithlines',params,context=context,feedback=None)
 
         if infc2:
             params = {'INPUT':infc2,'OUTPUT':'memory:'}
-            tempmask = st.run('qgis:polygonstolines',params,context=context,feedback=feedback)
+            tempmask = st.run('qgis:polygonstolines',params,context=context,feedback=None)
             params = {'INPUT':infc,'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}
-            tempint = st.run('native:intersection',params,context=context,feedback=feedback)
+            tempint = st.run('native:intersection',params,context=context,feedback=None)
+            params = {'INPUT':tempint['OUTPUT'],'OUTPUT':'memory:'}
+            templines = st.run("native:multiparttosingleparts",params,context=context,feedback=None)
             cursorm = [feature.geometry() for feature in tempmask['OUTPUT'].getFeatures(QgsFeatureRequest())]
-            infc = tempint['OUTPUT']
-
 
         field_check = Sample_Area.fields().indexFromName('Radius')
 
         if field_check != -1:
             params = {'INPUT':infc3,'ALL_PARTS':False,'OUTPUT':'memory:'}
-            centroids = st.run('native:centroids',params,context=context,feedback=feedback)
+            centroids = st.run('native:centroids',params,context=context,feedback=None)
 
             params = {'INPUT':centroids['OUTPUT'],'DISTANCE':QgsProperty.fromField('Radius'), 'SEGMENTS': 100, 'END_CAP_STYLE':0,'JOIN_STYLE':0,'MITER_LIMIT':2,'DISSOLVE':False,'OUTPUT':'memory:'}
-            buff = st.run('native:buffer',params,context=context,feedback=feedback)
+            buff = st.run('native:buffer',params,context=context,feedback=None)
 
             if infc2:
                 params = {'INPUT':buff['OUTPUT'],'OVERLAY':infc2,'INPUT_FIELDS':'','OVERLAY_FIELDS':'','OUTPUT':'memory:'}
-                samplemask = st.run('native:intersection',params,context=context,feedback=feedback)
+                samplemask = st.run('native:intersection',params,context=context,feedback=None)
                 Sample_Area = samplemask['OUTPUT']
             else:
                 Sample_Area = buff['OUTPUT']
 
-
         unknown_nodes,point_data = [],[]
         c_points = {}
         Graph = {} #Store all node connections
-        P = 10000
+        P = 100000
         feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Node Information'))
         extra_fields = []
         for field in templines['OUTPUT'].fields():
@@ -215,6 +214,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
         eCount = 0
         features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
         feedback.pushInfo(QCoreApplication.translate('BranchesNodes','Creating Branches and Nodes'))
+
         for enum,feature in enumerate(features):
             try:
                 feedback.setProgress(int(enum*total))
@@ -261,11 +261,11 @@ class BranchesNodes(QgsProcessingAlgorithm):
                         weight = 1
                         for (x,y) in branch:  #Points
                             testPoint = QgsGeometry.fromPointXY(QgsPointXY(x,y))
-                            if not testPoint.within(m[0].buffer(-0.001,2)): #Test if point is on edge of sample area
-                                V = 'E'
-                                weight -= 0.5
-                            elif (x,y) in unknown_nodes:
+                            if (x,y) in unknown_nodes:
                                 V = 'U'
+                                weight -= 0.5
+                            elif not testPoint.within(m[0].buffer(-0.001,2)): #Test if point is on edge of sample area
+                                V = 'E'
                                 weight -= 0.5
                             else:
                                 if (x,y) in Graph:
