@@ -15,7 +15,7 @@ import os
 import numpy as np
 import pandas as pd
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
-from qgis.core import (edit,QgsField, QgsProcessingParameterField,QgsFeature, QgsPointXY, QgsProcessingParameterMultipleLayers, QgsProcessingParameterNumber, QgsProcessingParameterEnum, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
+from qgis.core import (edit,QgsField, QgsProcessingParameterField,QgsFeature, QgsProcessingParameterBoolean, QgsProcessingParameterMultipleLayers, QgsProcessingParameterNumber, QgsProcessingParameterEnum, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
 from PyQt5.QtCore import QDate, QDateTime
 import PyQt5
@@ -30,25 +30,26 @@ class GridPlot(QgsProcessingAlgorithm):
     Size = 'Size'
     Time = 'Time'
     Speed = 'Speed'
+    A = 'Animate'
 
     def __init__(self):
         super().__init__()
 
     def name(self):
-        return "Grid Plot Animations"
+        return "Grid Plots"
 
     def tr(self, text):
-        return QCoreApplication.translate("Grid Plot Animations", text)
+        return QCoreApplication.translate("Grid Plots", text)
 
     def displayName(self):
-        return self.tr("Grid Plot Animations")
+        return self.tr("Grid Plots")
 
     def group(self):
         return self.tr("2. Sampling")
 
     def shortHelpString(self):
-        return self.tr('''Create a series of time animated plots using Plotly. User must specify a time field and either a X field to create a histogram plot, X and Y field to create a scatter plot or a X, Y and Z field to create a ternary diagram. 
-        In addition, the user may optionally specify a groupby and size fields in the creation of plots.''')
+        return self.tr('''Create a series of grid plots and time animated grid plots using Plotly. User can provide a X field to create a histogram plot, X and Y field to create a scatter plot or a X, Y and Z field to create a ternary diagram.
+        The Time Field will sort the data by the provided field and must be supplied if the animate check box is selected. In addition, the user may optionally specify a sortby, groupby and size fields in the creation of plots.''')
 
     def groupId(self):
         return "2. Sampling"
@@ -69,12 +70,13 @@ class GridPlot(QgsProcessingAlgorithm):
 
     def initAlgorithm(self, config):
         self.addParameter(QgsProcessingParameterFeatureSource(self.Grid, self.tr("Contour Grid")))
-        self.addParameter(QgsProcessingParameterField(self.Time, self.tr('Time Field'), parentLayerParameterName=self.Grid))
-        self.addParameter(QgsProcessingParameterField(self.X, self.tr('X value'), parentLayerParameterName=self.Grid, type=QgsProcessingParameterField.Numeric))
-        self.addParameter(QgsProcessingParameterField(self.Y, self.tr('Y value'), parentLayerParameterName=self.Grid, type=QgsProcessingParameterField.Numeric,optional=True))
+        self.addParameter(QgsProcessingParameterField(self.X, self.tr('X value'), 'Step', parentLayerParameterName=self.Grid, type=QgsProcessingParameterField.Numeric))
+        self.addParameter(QgsProcessingParameterField(self.Y, self.tr('Y value'), 'Tracer', parentLayerParameterName=self.Grid, type=QgsProcessingParameterField.Numeric,optional=True))
         self.addParameter(QgsProcessingParameterField(self.Z, self.tr('Z value'), parentLayerParameterName=self.Grid, type=QgsProcessingParameterField.Numeric,optional=True))
         self.addParameter(QgsProcessingParameterField(self.Size, self.tr('Size'), parentLayerParameterName=self.Grid, type=QgsProcessingParameterField.Numeric, optional=True))
-        self.addParameter(QgsProcessingParameterField(self.Grp, self.tr('Groupby Field'), parentLayerParameterName=self.Grid,optional=True))
+        self.addParameter(QgsProcessingParameterField(self.Grp, self.tr('Groupby Field'),'Sample_No_', parentLayerParameterName=self.Grid,optional=True))
+        self.addParameter(QgsProcessingParameterField(self.Time, self.tr('Time or Sortby Field'), parentLayerParameterName=self.Grid,optional=True))
+        self.addParameter(QgsProcessingParameterBoolean(self.A, self.tr("Animate"), False))
 
         self.addParameter(QgsProcessingParameterNumber(
             self.Speed,
@@ -105,6 +107,11 @@ class GridPlot(QgsProcessingAlgorithm):
         T = self.parameterAsString(parameters, self.Time, context)
         G = self.parameterAsString(parameters, self.Grp, context)
         speed = parameters[self.Speed]
+        A = parameters[self.A]
+
+        if A and T == '':
+            feedback.reportError(QCoreApplication.translate('Error','Error - Please select a Time Field for animations.'))
+            return {}
 
         names = [X,Y,Z,S,T,G]
         vNames = {}
@@ -112,10 +119,17 @@ class GridPlot(QgsProcessingAlgorithm):
             if n != '':
                 vNames[n] = []
 
-        total = Grid.featureCount()
+        features = Grid.selectedFeatures()
+
+        if len(features) == 0:
+            features = Grid.getFeatures()
+            total = Grid.featureCount()
+        else:
+            total = len(features)
+
         total = 100.0/total
 
-        for enum,feature in enumerate(Grid.getFeatures(QgsFeatureRequest())):
+        for enum,feature in enumerate(features):
             if total != -1:
                 feedback.setProgress(int(enum*total))
             for name in vNames.keys():
@@ -139,21 +153,42 @@ class GridPlot(QgsProcessingAlgorithm):
 
         df[G] = df[G].astype(str)
 
-        df.sort_values(by=[T], inplace=True)
-        if Y:
-            if Z:
-                fig = px.scatter_ternary(df, a=X, b=Y, c=Z, animation_frame=T, color=G,size=S)
-            else:
-                xRange = [df[X].min()*0.9,df[X].max()*1.1]
-                yRange = [df[Y].min()*0.9,df[Y].max()*1.1]
-                fig = px.scatter(df, x=X, y=Y, animation_frame=T, color=G,size=S,range_x=xRange,range_y=yRange)
-        else:
-            if G == '':
-                fig = px.histogram(df, x=X, animation_frame=T)
-            else:
-                fig = px.histogram(df, x=X, animation_frame=T, color=G)
+        if A:
+            df.sort_values(by=[T], inplace=True)
+            if Y:
+                if Z:
+                    fig = px.scatter_ternary(df, a=X, b=Y, c=Z, animation_frame=T, color=G,size=S)
+                else:
+                    xRange = [df[X].min()*0.9,df[X].max()*1.1]
+                    yRange = [df[Y].min()*0.9,df[Y].max()*1.1]
+                    fig = px.scatter(df, x=X, y=Y, animation_frame=T, color=G,size=S,range_x=xRange,range_y=yRange)
 
-        fig.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = speed
+            else:
+                if G == '':
+                    fig = px.histogram(df, x=X, animation_frame=T)
+                else:
+                    fig = px.histogram(df, x=X, animation_frame=T, color=G)
+
+            fig.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = speed
+
+        else:
+            if T != '':
+                df.sort_values(by=[T], inplace=True)
+            if Y:
+                if Z:
+                    fig = px.scatter_ternary(df, a=X, b=Y, c=Z, color=G,size=S)
+                else:
+                    xRange = [df[X].min()*0.9,df[X].max()*1.1]
+                    yRange = [df[Y].min()*0.9,df[Y].max()*1.1]
+                    if T == '':
+                        fig = px.scatter(df, x=X, y=Y, color=G,size=S,range_x=xRange,range_y=yRange)
+                    else:
+                        fig = px.line(df, x=X, y=Y, color=G,range_x=xRange,range_y=yRange)
+            else:
+                if G == '':
+                    fig = px.histogram(df, x=X)
+                else:
+                    fig = px.histogram(df, x=X, color=G)
 
         try:
             py.plot(fig, filename='Animation', auto_open=True)

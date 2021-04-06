@@ -23,6 +23,8 @@ import os,numpy,time
 import pandas as pd
 
 def main(inFC,inFC2,inFC3,output):
+
+
     try:
 
         df = pd.read_csv(inFC,header=None,sep=':')
@@ -151,10 +153,10 @@ def main(inFC,inFC2,inFC3,output):
         os.remove(inFC3)
 
 
-    except Exception,e:
-        print e
-        time.sleep(5)
-
+    except Exception as e:
+        eFname = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Error Log.txt')
+        with open(eFname,'w') as myLog:
+            myLog.write(str(e))
 
 if __name__ == "__main__":
 
@@ -166,6 +168,7 @@ if __name__ == "__main__":
 
         main(inFC,inFC2,inFC3,output)
 
-    except Exception,e:
-        print '%s e'%(e)
-        time.sleep(10)
+    except Exception as e:
+        eFname = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Error Log.txt')
+        with open(eFname, 'w') as myLog:
+            myLog.write(str(e))
