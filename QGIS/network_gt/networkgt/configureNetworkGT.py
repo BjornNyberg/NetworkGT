@@ -51,45 +51,45 @@ class configureNetworkGT(QgsProcessingAlgorithm):
    # self.addParameter(QgsProcessingParameterBoolean(self.Export, self.tr("Export SVG File"),False))
 
     def processAlgorithm(self, parameters, context, feedback):
+        if os.name == 'nt':
+            reply = QMessageBox.question(iface.mainWindow(), 'Install NetworkGT Dependencies',
+                     'WARNING: Installing dependencies for NetworkGT may break the dependencies of other plugins and/or python modules. Do you wish to continue?', QMessageBox.Yes, QMessageBox.No)
 
-        reply = QMessageBox.question(iface.mainWindow(), 'Install NetworkGT Dependencies',
-                 'WARNING: Installing dependencies for NetworkGT may break the dependencies of other plugins and/or python modules. Do you wish to continue?', QMessageBox.Yes, QMessageBox.No)
-
-        if reply == QMessageBox.Yes:
-            try:
-                is_admin = os.getuid() == 0
-            except AttributeError:
-                import ctypes
-                is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-
-            modules = ['cython','numpy','scipy','scikit-image','sympy']
-            moduleVersions = ['pip','pandas==0.25.1','meshio == 2.3.8','chart_studio','plotly>=4.11.0','networkx==2.5']
-
-            if not is_admin:
-                feedback.reportError(QCoreApplication.translate('Warning',"Attempted to install necessary python modules without admin access. Certain 'Digitising' and 'Flow' tools may not work."))
-
-            for module in moduleVersions:
+            if reply == QMessageBox.Yes:
                 try:
-                    if is_admin:
-                        status = subprocess.check_call(['python3','-m', 'pip', 'install', module, '--upgrade'])
-                    else:
-                        status = subprocess.check_call(['python3','-m', 'pip', 'install', module, '--upgrade','--user'])
-                except Exception:
-                    feedback.reportError(QCoreApplication.translate('Warning','Failed to install %s - consider installing manually'%(module)))
-                    continue
+                    is_admin = os.getuid() == 0
+                except AttributeError:
+                    import ctypes
+                    is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
 
-            for module in modules:
-                try:
-                    if is_admin:
-                        status = subprocess.check_call(['python3','-m', 'pip', 'install', module])
-                    else:
-                        status = subprocess.check_call(['python3','-m', 'pip', 'install', module,'--user'])
+                modules = ['cython','numpy','scipy','scikit-image','sympy']
+                moduleVersions = ['pip','pandas==0.25.1','meshio == 2.3.8','chart_studio','plotly>=4.11.0','networkx==2.5']
 
-                    if status != 0:
+                if not is_admin:
+                    feedback.reportError(QCoreApplication.translate('Warning',"Attempted to install necessary python modules without admin access. Certain 'Digitising' and 'Flow' tools may not work."))
+
+                for module in moduleVersions:
+                    try:
+                        if is_admin:
+                            status = subprocess.check_call(['python3','-m', 'pip', 'install', module, '--upgrade'])
+                        else:
+                            status = subprocess.check_call(['python3','-m', 'pip', 'install', module, '--upgrade','--user'])
+                    except Exception:
                         feedback.reportError(QCoreApplication.translate('Warning','Failed to install %s - consider installing manually'%(module)))
-                except Exception:
-                    feedback.reportError(QCoreApplication.translate('Warning','Failed to install %s - consider installing manually'%(module)))
-                    continue
+                        continue
+
+                for module in modules:
+                    try:
+                        if is_admin:
+                            status = subprocess.check_call(['python3','-m', 'pip', 'install', module])
+                        else:
+                            status = subprocess.check_call(['python3','-m', 'pip', 'install', module,'--user'])
+
+                        if status != 0:
+                            feedback.reportError(QCoreApplication.translate('Warning','Failed to install %s - consider installing manually'%(module)))
+                    except Exception:
+                        feedback.reportError(QCoreApplication.translate('Warning','Failed to install %s - consider installing manually'%(module)))
+                        continue
 
         reply = QMessageBox.question(iface.mainWindow(), 'Install NetworkGT Dependencies',
                  'Do you want to configure gmsh?', QMessageBox.Yes, QMessageBox.No)
@@ -129,6 +129,8 @@ class configureNetworkGT(QgsProcessingAlgorithm):
                 chart_studio.tools.set_config_file(world_readable=True, sharing='public')
             else:
                 feedback.reportError(QCoreApplication.translate('Warning',
-                                                                'Please get a username and API key from https://chart-studio.plotly.com/settings/api or visit the NetworkGT website for more help at https://github.com/BjornNyberg/NetworkGT/wiki/Installation'))
+                                                                'Please acquire a username and API key from https://chart-studio.plotly.com/settings/api or visit the NetworkGT website for more help at https://github.com/BjornNyberg/NetworkGT/wiki/Installation'))
+        if os.name != 'nt':
+            feedback.reportError(QCoreApplication.translate('Warning','For macOS and Linux users - manually install required modules or visit https://github.com/BjornNyberg/NetworkGT/wiki/Installation for more help.'))
 
         return {}
