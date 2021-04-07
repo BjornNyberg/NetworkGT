@@ -24,6 +24,8 @@ from distutils.dir_util import copy_tree
 
 modules = ['python-ternary==1.0.4']
 
+print 'Warning! Python 2.7 has been depreciated and is no longer supported. It is highly recommended to use the open source QGIS NetworkGT version.'
+
 def main(python_exe):
 
     files = ['Histogram.py','WeightedRoseDiagramPlots.py','LineFrequencyPlot.py','DistributionAnalysis.py','PlotTopology.py','TopologyParameters.py']

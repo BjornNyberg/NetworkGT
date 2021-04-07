@@ -27,7 +27,9 @@ folder = dirname[1].replace('x64','')
 
 python_exe = os.path.join(dirname[0],folder,'python.exe')
 
-modules = ['pip','python-ternary==1.0.4','scipy==1.0.1','pandas==0.23.3','networkx==1.8','xlsxwriter==1.0.4']
+modules = ['pip==20.3.4','python-ternary==1.0.4','scipy==1.0.1','pandas==0.23.3','networkx==1.8','xlsxwriter==1.0.4']
+
+print 'Warning! Python 2.7 has been depreciated and is no longer supported. It is highly recommended to use the open source QGIS NetworkGT version.'
 
 try:
     is_admin = os.getuid() == 0
