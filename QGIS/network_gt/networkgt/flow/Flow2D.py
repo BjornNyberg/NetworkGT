@@ -162,17 +162,18 @@ class Flow2D(QgsProcessingAlgorithm):
         if lP > hP:
             feedback.reportError(QCoreApplication.translate('Error','Low pressure value is higher than high pressure value.'))
             return {}
-        newFields = ['Pressure','Flux','Azimuth','Tracer','StartTime','EndTime']
+        newFields = ['Pressure','Flux','Azimuth','Tracer','StartTime','EndTime','Step']
 
         fields = QgsFields()
         for field in layer.fields():
             if field.name() not in newFields:
                 fields.append(QgsField(field.name(),field.type()))
 
-        for field in newFields[:-2]:
+        for field in newFields[:-3]:
             fields.append(QgsField(field,QVariant.Double))
         fields.append(QgsField('StartTime',QVariant.DateTime))
         fields.append(QgsField('EndTime',QVariant.DateTime))
+        fields.append(QgsField('Step', QVariant.Double))
 
         (writer, dest_id) = self.parameterAsSink(parameters, self.outGrid, context,
                                                            fields, QgsWkbTypes.Polygon, layer.sourceCrs())
@@ -338,6 +339,7 @@ class Flow2D(QgsProcessingAlgorithm):
                     newRows.append(str(time))
                     time += deltaTime
                     newRows.append(str(time))
+                    newRows.append(int(n))
 
                     fet.setGeometry(geom)
                     fet.setAttributes(newRows)
