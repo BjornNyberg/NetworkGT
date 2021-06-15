@@ -12,8 +12,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.'''
 
 import os
-import numpy as np
-import pandas as pd
+
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.core import (edit,QgsField, QgsFeature, QgsPointXY, QgsProcessingParameterMultipleLayers, QgsProcessingParameterNumber, QgsProcessingParameterEnum, QgsProcessing,QgsWkbTypes, QgsGeometry, QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessingParameterFeatureSink,QgsProcessingParameterNumber,QgsFeatureSink,QgsFeatureRequest,QgsFields,QgsProperty,QgsVectorLayer)
 from qgis.PyQt.QtGui import QIcon
@@ -80,6 +79,14 @@ class GridStats(QgsProcessingAlgorithm):
             QgsProcessing.TypeVectorPolygon))
 
     def processAlgorithm(self, parameters, context, feedback):
+        try:
+            import numpy as np
+            import pandas as pd
+        except Exception:
+            feedback.reportError(QCoreApplication.translate('Error','%s'%(e)))
+            feedback.reportError(QCoreApplication.translate('Error',' '))
+            feedback.reportError(QCoreApplication.translate('Error','Error loading modules - please install the necessary dependencies'))
+            return {}
 
         multipleGrids = [QgsVectorLayer(grid.source()) for grid in self.parameterAsLayerList(parameters, self.mG, context)]
 
