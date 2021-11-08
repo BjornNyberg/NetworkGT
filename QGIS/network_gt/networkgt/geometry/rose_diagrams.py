@@ -162,11 +162,16 @@ class RoseDiagrams(QgsProcessingAlgorithm):
 
                     startx,starty = endx,endy
 
-            mean = 90 - np.around(math.degrees(math.atan2(y, x)), decimals=4)
+           # mean = 90 - np.around(math.degrees(math.atan2(y, x)), decimals=4)
+           # if mean > 180:
+           #     mean -= 180
+           # elif mean < 0:
+           #     mean += 180
+
+            mean = np.around(math.degrees(math.atan2(y, x)), decimals=4) #Simplified angle calculation
+            mean = mean%360
             if mean > 180:
                 mean -= 180
-            elif mean < 0:
-                mean += 180
 
             if ID in data:
                 data[ID].append((mean,W))

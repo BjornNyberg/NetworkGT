@@ -179,11 +179,16 @@ class permTensor(QgsProcessingAlgorithm):
 
                     startx,starty = endx,endy
 
-            a = 90 - np.around(math.degrees(math.atan2(y, x)), decimals=4)
+           # a = 90 - np.around(math.degrees(math.atan2(y, x)), decimals=4)
+           # if a > 180:
+           #     a -= 180
+           # elif a < 0:
+           #     a += 180
+
+            a = np.around(math.degrees(math.atan2(y, x)), decimals=4)
+            a = a%360
             if a > 180:
                 a -= 180
-            elif a < 0:
-                a += 180
 
             bLen = geom.length()
             if tF:
