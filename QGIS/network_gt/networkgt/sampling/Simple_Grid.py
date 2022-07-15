@@ -96,6 +96,9 @@ class ContourGrid(QgsProcessingAlgorithm):
         radius = parameters[self.Radius]
         w = parameters[self.Within]
 
+        if spacing > radius:
+            feedback.reportError(QCoreApplication.translate('Warning', 'Warning - Specified grid spacing is less than the search radius which will result in non-overlapping sampling regions!!!'))
+
         if rotation == 0.0:
             r = 0.00001
         else:

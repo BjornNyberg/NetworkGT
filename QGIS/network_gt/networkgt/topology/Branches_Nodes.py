@@ -247,10 +247,10 @@ class BranchesNodes(QgsProcessingAlgorithm):
                     else:
                         V = 'Error'
                     name.append(V)
-                Class = " - ".join(sorted(name[:2])) #Organize the order of names
-                name = Class.replace('X','C').replace('Y','C')
+                className = " - ".join(sorted(name[:2])) #Organize the order of names
+                name = className.replace('X','C').replace('Y','C')
                 name = name.split(" - ")
-                Connection = " - ".join(sorted(name))
+                cName = " - ".join(sorted(name))
                 geom = feature.geometry()
                 cursorm = index.intersects(geom.boundingBox())
 
@@ -293,7 +293,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                                 fet2.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
                                 fet2.setAttributes(data2)
                                 writer2.addFeature(fet2,QgsFeatureSink.FastInsert)
-                        data = [Class,Connection,weight,m[1],feature.geometry().length()]
+                        data = [className,cName,weight,m[1],feature.geometry().length()]
                         data.extend(rows)
                         fet.setGeometry(feature.geometry())
                         fet.setAttributes(data)
@@ -350,7 +350,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
                                     if V == 'E' or V == 'U':
                                         weight -= 0.5
 
-                                data = [Class,Connection,weight,m[1],feature.geometry().length()]
+                                data = [className,cName,weight,m[1],feature.geometry().length()]
                                 data.extend(rows)
                                 fet.setGeometry(inter)
                                 fet.setAttributes(data)
