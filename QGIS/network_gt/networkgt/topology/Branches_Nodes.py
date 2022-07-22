@@ -160,9 +160,10 @@ class BranchesNodes(QgsProcessingAlgorithm):
         feedback.pushInfo(QCoreApplication.translate('Nodes','Reading Node Information'))
         extra_fields = []
         for field in templines['OUTPUT'].fields():
-            if field.name() not in new_fields:
-                fields.append(QgsField(field.name(),field.type()))
-                extra_fields.append(field.name())
+            if field.name() != 'fid':
+                if field.name() not in new_fields:
+                    fields.append(QgsField(field.name(),field.type()))
+                    extra_fields.append(field.name())
 
         (writer, dest_id) = self.parameterAsSink(parameters, self.Branches, context,
                                                fields, QgsWkbTypes.LineString, layer.sourceCrs())
