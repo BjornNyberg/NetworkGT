@@ -215,6 +215,7 @@ class BranchesNodes(QgsProcessingAlgorithm):
         eCount = 0
         features = templines['OUTPUT'].getFeatures(QgsFeatureRequest())
         feedback.pushInfo(QCoreApplication.translate('BranchesNodes','Creating Branches and Nodes'))
+        errorNodes = []
 
         for enum,feature in enumerate(features):
             try:
@@ -240,11 +241,13 @@ class BranchesNodes(QgsProcessingAlgorithm):
                             V = 'X'
                         else:
                             V = str(node_count)#'Error'
-                            eCount += 1
-                            if eCount < 10:
-                                feedback.reportError(QCoreApplication.translate('Interpretation Boundary','Found intersection with %s nodes at coordinates %s! Please repair fracture network using the repair tool and/or manual reinterpretation(s)'%(node_count,str((x,y)))))
-                            elif eCount == 10:
-                                feedback.reportError(QCoreApplication.translate('Interpretation Boundary','Reached 10 errors and will stop reporting errors'))
+                            if (x,y) not in errorNodes:
+                                errorNodes.append((x,y))
+                                eCount += 1
+                                if eCount < 10:
+                                    feedback.reportError(QCoreApplication.translate('Interpretation Boundary','Found intersection with %s nodes at coordinates %s! Please repair fracture network using the repair tool and/or manual reinterpretation(s)'%(node_count,str((x,y)))))
+                                elif eCount == 10:
+                                    feedback.reportError(QCoreApplication.translate('Interpretation Boundary','Reached 10 errors and will stop reporting errors'))
                     else:
                         V = 'Error'
                     name.append(V)
