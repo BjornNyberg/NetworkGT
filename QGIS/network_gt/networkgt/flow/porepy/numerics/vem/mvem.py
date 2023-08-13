@@ -99,8 +99,8 @@ class MVEM(pp.numerics.vem.dual_elliptic.DualElliptic):
         # Allocate the data to store matrix entries, that's the most efficient
         # way to create a sparse matrix.
         size = np.sum(np.square(g.cell_faces.indptr[1:] - g.cell_faces.indptr[:-1]))
-        I = np.empty(size, dtype=np.int)
-        J = np.empty(size, dtype=np.int)
+        I = np.empty(size, dtype=int)
+        J = np.empty(size, dtype=int)
         dataIJ = np.empty(size)
         idx = 0
 

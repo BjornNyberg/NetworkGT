@@ -302,7 +302,7 @@ class CartGrid(TensorGrid):
             Defaults to same as nx, that is, cells of unit size.
         """
 
-        #        nx = nx.astype(np.int)
+        #        nx = nx.astype(int)
 
         if physdims is None:
             physdims = nx

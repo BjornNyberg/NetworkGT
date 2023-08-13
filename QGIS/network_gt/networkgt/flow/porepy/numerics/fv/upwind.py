@@ -219,7 +219,7 @@ class Upwind:
 
         flow_cells = if_faces.transpose() * flow_faces
         flow_cells.tocsr()
-        flow_cells = flow_cells.astype(np.float)
+        flow_cells = flow_cells.astype(float)
 
         # Store disrcetization matrix
         matrix_dictionary[self.matrix_keyword] = flow_cells
@@ -375,7 +375,7 @@ class Upwind:
 
         outflow_faces = if_faces.indices[if_faces.data > 0]
         domain_boundary_faces = g.tags["domain_boundary_faces"].nonzero()[0]
-        outflow_faces = np.intersect1d(
+        outflow_faces = intersect1d(
             outflow_faces, domain_boundary_faces, assume_unique=True
         )
 

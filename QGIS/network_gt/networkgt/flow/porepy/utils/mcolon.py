@@ -50,12 +50,12 @@ def mcolon(lo, hi):
     if not any(i):
         return np.array([], dtype=np.int32)
 
-    lo = lo[i].astype(np.int)
-    hi = (hi[i] - 1).astype(np.int)
+    lo = lo[i].astype(int)
+    hi = (hi[i] - 1).astype(int)
     d = hi - lo + 1
     n = np.sum(d)
 
-    x = np.ones(n, dtype=np.int)
+    x = np.ones(n, dtype=int)
     x[0] = lo[0]
     x[np.cumsum(d[0:-1])] = lo[1:] - hi[0:-1]
     return np.cumsum(x)

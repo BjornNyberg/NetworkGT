@@ -45,18 +45,18 @@ class FvSubGrid(pp.Grid):
 
         nno_unique = subcell_topology.nno_unique
         sf_n_indptr = np.arange(nno_unique.size + 1)
-        data = np.ones(nno_unique.size, dtype=np.bool)
+        data = np.ones(nno_unique.size, dtype=bool)
         subface_to_nodes = sps.csc_matrix((data, nno_unique, sf_n_indptr))
         # We now add the mapping from sub_cells to nodes
         sc_n_indices = g.cell_nodes().indices
         sc_n_indptr = np.arange(sc_n_indices.size + 1)
-        data = np.ones(sc_n_indices.size, dtype=np.bool)
+        data = np.ones(sc_n_indices.size, dtype=bool)
         subcell_to_nodes = sps.csc_matrix((data, sc_n_indices, sc_n_indptr))
         # And from this obtain the subcell to subface mapping
         subcell_to_subfaces = (subface_to_nodes.T * subcell_to_nodes).tocsc()
         # flip one sign of duplicate subfaces
         _, ix = np.unique(subcell_to_subfaces.indices, return_index=True)
-        subcell_to_subfaces.data = subcell_to_subfaces.data.astype(np.int)
+        subcell_to_subfaces.data = subcell_to_subfaces.data.astype(int)
         subcell_to_subfaces.data[ix] *= -1
 
         # As the face centers we use the continuity point
@@ -74,8 +74,8 @@ class FvSubGrid(pp.Grid):
         self.face_areas = g.face_areas / num_nodes_per_face
         self.face_areas = self.face_areas[subcell_topology.fno_unique]
         if hasattr(g, "frac_pairs"):
-            is_master = np.zeros(g.num_faces, dtype=np.bool)
-            is_slave = np.zeros(g.num_faces, dtype=np.bool)
+            is_master = np.zeros(g.num_faces, dtype=bool)
+            is_slave = np.zeros(g.num_faces, dtype=bool)
             is_master[g.frac_pairs[0]] = True
             is_slave[g.frac_pairs[1]] = True
             is_master_hf = is_master[subcell_topology.fno_unique]

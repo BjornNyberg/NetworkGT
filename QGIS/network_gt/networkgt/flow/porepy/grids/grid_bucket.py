@@ -833,7 +833,7 @@ class GridBucket(object):
         self.add_node_props("cell_global2loc")
         for g, d in self:
             pos_i = d["node_number"]
-            mat = np.empty(self.num_graph_nodes(), dtype=np.object)
+            mat = np.empty(self.num_graph_nodes(), dtype=object)
             # first initial empty matrix
             for g_j, d_j in self:
                 pos_j = d_j["node_number"]
@@ -849,7 +849,7 @@ class GridBucket(object):
                 continue
             gm = d["mortar_grid"]
             pos_i = d["edge_number"]
-            mat = np.empty(self.num_graph_edges(), dtype=np.object)
+            mat = np.empty(self.num_graph_edges(), dtype=object)
             # first initial empty matrix
             for _, d_j in self.edges():
                 gm_j = d_j["mortar_grid"]
@@ -1181,7 +1181,7 @@ class GridBucket(object):
         if cond is None:
             cond = lambda g: True
         return np.sum(
-            [g.num_cells for g in self._nodes.keys() if cond(g)], dtype=np.int
+            [g.num_cells for g in self._nodes.keys() if cond(g)], dtype=int
         )
 
     def num_mortar_cells(self, cond=None):
@@ -1204,7 +1204,7 @@ class GridBucket(object):
                 for _, d in self.edges()
                 if d.get("mortar_grid") and cond(d["mortar_grid"])
             ],
-            dtype=np.int,
+            dtype=int,
         )
 
     def num_faces(self, cond=None):

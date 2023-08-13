@@ -72,7 +72,7 @@ class Fracture(object):
                 plane is known to be convex to save time.
 
         """
-        self.p = np.asarray(points, dtype=np.float)
+        self.p = np.asarray(points, dtype=float)
         # Ensure the points are ccw
         self.points_2_ccw()
         self.compute_centroid()
@@ -211,8 +211,8 @@ class Fracture(object):
 
         to_enforce = np.hstack(
             (
-                np.zeros(self.p.shape[1], dtype=np.bool),
-                np.ones(p.shape[1], dtype=np.bool),
+                np.zeros(self.p.shape[1], dtype=bool),
+                np.ones(p.shape[1], dtype=bool),
             )
         )
         self.p = np.hstack((self.p, p))
@@ -841,8 +841,8 @@ class FractureNetwork3d(object):
             # fractures. The indexing is a bit involved, but is based on there being
             # two intersection points for each segment - thus the indices in i0 and i1
             # must be divided by two.
-            on_bound_0 = bound_info[ind_0][np.floor(i0[0] / 2).astype(np.int)]
-            on_bound_1 = bound_info[ind_1][np.floor(i1[0] / 2).astype(np.int)]
+            on_bound_0 = bound_info[ind_0][np.floor(i0[0] / 2).astype(int)]
+            on_bound_1 = bound_info[ind_1][np.floor(i1[0] / 2).astype(int)]
 
             # Add the intersection to the internal list
             self.intersections.append(
@@ -1347,7 +1347,7 @@ class FractureNetwork3d(object):
             dist = np.inf
             p = d["points"]
             num_points = p.shape[1]
-            hit = np.ones(num_points, dtype=np.bool)
+            hit = np.ones(num_points, dtype=bool)
             for i in range(num_points):
                 hit[i] = False
                 dist_loc = pp.distances.point_pointset(p[:, i], p[:, hit])
@@ -1366,7 +1366,7 @@ class FractureNetwork3d(object):
         vertex or as internal.
 
         Returns:
-            list of np.int: indices of fractures, one list item per point.
+            list of int: indices of fractures, one list item per point.
 
         """
         fracs_of_points = []
@@ -1611,7 +1611,7 @@ class FractureNetwork3d(object):
         if inds.size > 0:
             split_frac = np.where(np.bincount(inds) > 1)[0]
         else:
-            split_frac = np.zeros(0, dtype=np.int)
+            split_frac = np.zeros(0, dtype=int)
 
         # Update the fractures with the new data format
         for poly, ind in zip(constrained_polys, inds):
@@ -2312,7 +2312,7 @@ class FractureNetwork3d(object):
         # Intersection points, in 2d coordinates
         ip = np.empty((2, 0))
 
-        other_frac = np.empty(0, dtype=np.int)
+        other_frac = np.empty(0, dtype=int)
 
         for i in isect:
             if i.first.index == frac_num:
@@ -2352,7 +2352,7 @@ class FractureNetwork3d(object):
             self.tags.get("subdomain"[False] * len(self._fractures))
         )[0]
         # ... on the points...
-        point_tags = np.zeros(self.decomposition["points"].shape[1], dtype=np.int)
+        point_tags = np.zeros(self.decomposition["points"].shape[1], dtype=int)
         # and the mapping between fractures and edges.
         edges_2_frac = self.decomposition["edges_2_frac"]
 

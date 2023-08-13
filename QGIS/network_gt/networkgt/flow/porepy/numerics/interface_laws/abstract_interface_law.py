@@ -153,7 +153,7 @@ class AbstractInterfaceLaw:
         cc = cc.reshape((3, 3))
 
         # The rhs is just zeros
-        rhs = np.empty(3, dtype=np.object)
+        rhs = np.empty(3, dtype=object)
         rhs[master_ind] = np.zeros(dof_master)
         rhs[slave_ind] = np.zeros(dof_slave)
         rhs[mortar_ind] = np.zeros(dof_mortar)
@@ -223,7 +223,7 @@ class AbstractInterfaceLaw:
         cc = cc.reshape((3, 3))
 
         # The rhs is just zeros
-        rhs = np.empty(3, dtype=np.object)
+        rhs = np.empty(3, dtype=object)
         rhs[grid_ind] = np.zeros(dof_grid)
         rhs[primary_ind] = np.zeros(dof_mortar_primary)
         rhs[secondary_ind] = np.zeros(dof_mortar_secondary)

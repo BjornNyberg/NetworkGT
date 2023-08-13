@@ -965,8 +965,8 @@ class Assembler:
         for var in list(set(self.variable_combinations)):
 
             # Generate a block matrix
-            matrix_dict[var] = np.empty((num_blocks, num_blocks), dtype=np.object)
-            rhs_dict[var] = np.empty(num_blocks, dtype=np.object)
+            matrix_dict[var] = np.empty((num_blocks, num_blocks), dtype=object)
+            rhs_dict[var] = np.empty(num_blocks, dtype=object)
 
             # Loop over all blocks, initialize the diagonal block.
             # We could also initialize off-diagonal blocks, however, this turned
@@ -985,8 +985,8 @@ class Assembler:
 
         # Assign a block matrix and vector with specified number of dofs per block
         num_blocks = len(dof)
-        matrix = np.empty((num_blocks, num_blocks), dtype=np.object)
-        rhs = np.empty(num_blocks, dtype=np.object)
+        matrix = np.empty((num_blocks, num_blocks), dtype=object)
+        rhs = np.empty(num_blocks, dtype=object)
 
         for ri in range(num_blocks):
             rhs[ri] = np.zeros(dof[ri])

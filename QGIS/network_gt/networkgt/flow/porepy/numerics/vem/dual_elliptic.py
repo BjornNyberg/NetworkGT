@@ -250,7 +250,7 @@ class DualElliptic(
         # is_dir.
         is_neu = np.logical_and(bc.is_neu, np.logical_not(bc.is_internal))
         if bc and np.any(is_neu):
-            is_neu = np.hstack((is_neu, np.zeros(g.num_cells, dtype=np.bool)))
+            is_neu = np.hstack((is_neu, np.zeros(g.num_cells, dtype=bool)))
             is_neu = np.where(is_neu)[0]
 
             # set in an efficient way the essential boundary conditions, by
@@ -501,7 +501,7 @@ class DualElliptic(
 
         hat_E_int = self._velocity_dof(g, mg, mg.mortar_to_master_int())
 
-        dof = np.where(hat_E_int.sum(axis=1).A.astype(np.bool))[0]
+        dof = np.where(hat_E_int.sum(axis=1).A.astype(bool))[0]
         norm = np.linalg.norm(matrix[self_ind, self_ind].diagonal(), np.inf)
 
         for row in dof:

@@ -198,8 +198,8 @@ class BoundaryConditionNode(AbstractBoundaryCondition):
         # Keep track of internal boundaries
         self.is_internal = g.tags["fracture_nodes"]
 
-        self.is_neu = np.zeros(self.num_nodes, dtype=np.bool)
-        self.is_dir = np.zeros(self.num_nodes, dtype=np.bool)
+        self.is_neu = np.zeros(self.num_nodes, dtype=bool)
+        self.is_dir = np.zeros(self.num_nodes, dtype=bool)
 
         # By default, all nodes are Neumann.
         self.is_neu[bn] = True

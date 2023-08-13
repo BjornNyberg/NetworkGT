@@ -88,7 +88,7 @@ class MortarGrid(object):
 
         # easy access attributes with a fixed ordering of the side grids
         self.num_cells = np.sum(
-            [g.num_cells for g in self.side_grids.values()], dtype=np.int
+            [g.num_cells for g in self.side_grids.values()], dtype=int
         )
         self.cell_volumes = np.hstack(
             [g.cell_volumes for g in self.side_grids.values()]
@@ -133,7 +133,7 @@ class MortarGrid(object):
 
         shape = (num_cells * self.num_sides(), face_cells.shape[1])
         self._master_to_mortar_int = sps.csc_matrix(
-            (data.astype(np.float), (cells, faces)), shape=shape
+            (data.astype(float), (cells, faces)), shape=shape
         )
 
         # cell_cells mapping from the mortar grid to the lower dimensional grid.
@@ -187,7 +187,7 @@ class MortarGrid(object):
 
         # Update the attributes
         self.num_cells = np.sum(
-            [g.num_cells for g in self.side_grids.values()], dtype=np.int
+            [g.num_cells for g in self.side_grids.values()], dtype=int
         )
         self.cell_volumes = np.hstack(
             [g.cell_volumes for g in self.side_grids.values()]
@@ -213,7 +213,7 @@ class MortarGrid(object):
         # stored we need to remap it. The resulting matrix will be a block
         # diagonal matrix, where in each block we have the mapping between the
         # (relative to side) old grid and the new one.
-        matrix = np.empty((self.num_sides(), self.num_sides()), dtype=np.object)
+        matrix = np.empty((self.num_sides(), self.num_sides()), dtype=object)
 
         # Loop on all the side grids, if not given an identity matrix is
         # considered
@@ -249,7 +249,7 @@ class MortarGrid(object):
         # stored we need to remap it. The resulting matrix will be a block
         # matrix, where in each block we have the mapping between the
         # (relative to side) the new grid and the mortar grid.
-        matrix = np.empty((self.num_sides(), 1), dtype=np.object)
+        matrix = np.empty((self.num_sides(), 1), dtype=object)
 
         for pos, (side, _) in enumerate(self.side_grids.items()):
             matrix[pos, 0] = side_matrix[side]
@@ -539,7 +539,7 @@ class MortarGrid(object):
             return sps.dia_matrix((data, 0), shape=(nd * nc, nd * nc))
 
     def cell_diameters(self):
-        diams = np.empty(self.num_sides(), dtype=np.object)
+        diams = np.empty(self.num_sides(), dtype=object)
         for pos, (_, g) in enumerate(self.side_grids.items()):
             diams[pos] = g.cell_diameters()
         return np.concatenate(diams).ravel()
@@ -645,10 +645,10 @@ class BoundaryMortar(MortarGrid):
         shape_master = (self.num_cells, master_slave.shape[1])
         shape_slave = (self.num_cells, master_slave.shape[0])
         self._master_to_mortar_int = sps.csc_matrix(
-            (data.astype(np.float), (cells, master_f)), shape=shape_master
+            (data.astype(float), (cells, master_f)), shape=shape_master
         )
         self._slave_to_mortar_int = sps.csc_matrix(
-            (data.astype(np.float), (cells, slave_f)), shape=shape_slave
+            (data.astype(float), (cells, slave_f)), shape=shape_slave
         )
 
     def __repr__(self):

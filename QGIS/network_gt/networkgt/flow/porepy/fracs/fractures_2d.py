@@ -58,7 +58,7 @@ class FractureNetwork2d(object):
         else:
             self.pts = pts
         if edges is None:
-            self.edges = np.zeros((2, 0), dtype=np.int)
+            self.edges = np.zeros((2, 0), dtype=int)
         else:
             self.edges = edges
         self.domain = domain
@@ -125,12 +125,12 @@ class FractureNetwork2d(object):
             n_self = self_tags.shape[0]
             n_fs = fs_tags.shape[0]
             if n_self < n_fs:
-                extra_tags = np.empty((n_fs - n_self, self.num_frac), dtype=np.int)
+                extra_tags = np.empty((n_fs - n_self, self.num_frac), dtype=int)
                 self_tags = np.vstack((self_tags, extra_tags))
             elif n_self > n_fs:
-                extra_tags = np.empty((n_self - n_fs, fs.num_frac), dtype=np.int)
+                extra_tags = np.empty((n_self - n_fs, fs.num_frac), dtype=int)
                 fs_tags = np.vstack((fs_tags, extra_tags))
-            tags = np.hstack((self_tags, fs_tags)).astype(np.int)
+            tags = np.hstack((self_tags, fs_tags)).astype(int)
             e = np.vstack((e, tags))
 
         if self.domain is not None and fs.domain is not None:
@@ -172,7 +172,7 @@ class FractureNetwork2d(object):
         if tol is None:
             tol = self.tol
         if constraints is None:
-            constraints = np.empty(0, dtype=np.int)
+            constraints = np.empty(0, dtype=int)
 
         p = self.pts
         e = self.edges
@@ -316,7 +316,7 @@ class FractureNetwork2d(object):
             # get all the data for the current sub-network
             # NOTE: standard numpy conversion does not work for a graph with
             # one edge
-            edges = np.empty((2, sub_graph.number_of_edges()), dtype=np.int)
+            edges = np.empty((2, sub_graph.number_of_edges()), dtype=int)
             for idx, (u, v) in enumerate(sub_graph.edges):
                 edges[:, idx] = [u, v]
             # for compability we keep the same points as the original graph
@@ -324,7 +324,7 @@ class FractureNetwork2d(object):
             # create the sub network
             sub_networks += [FractureNetwork2d(pts, edges, network.domain, network.tol)]
 
-        return np.asarray(sub_networks, dtype=np.object)
+        return np.asarray(sub_networks, dtype=object)
 
     def purge_pts(self):
         """
@@ -335,7 +335,7 @@ class FractureNetwork2d(object):
         pts = np.unique(self.edges)
         # create the map from the old numeration to the new one with contiguous
         # point index
-        pts_map = np.zeros(np.amax(pts)+1, dtype=np.int)
+        pts_map = np.zeros(np.amax(pts)+1, dtype=int)
         pts_map[pts] = np.arange(pts.size)
 
         # map the edges and remove the useless points

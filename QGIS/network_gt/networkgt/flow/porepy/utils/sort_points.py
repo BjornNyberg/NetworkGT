@@ -32,7 +32,7 @@ def sort_point_pairs(lines, check_circular=True, ordering=False, is_circular=Tru
     sorted_lines = -np.ones(lines.shape, dtype=lines.dtype)
 
     # Keep track of which lines have been found, which are still candidates
-    found = np.zeros(num_lines, dtype=np.bool)
+    found = np.zeros(num_lines, dtype=bool)
 
     # In the case of non-circular ordering ensure to start from the correct one
     if not is_circular:
@@ -62,7 +62,7 @@ def sort_point_pairs(lines, check_circular=True, ordering=False, is_circular=Tru
     prev = sorted_lines[1, 0]
 
     # Order of the origin line list, store if they're flip or not to form the chain
-    is_ordered = np.zeros(num_lines, dtype=np.bool)
+    is_ordered = np.zeros(num_lines, dtype=bool)
     is_ordered[0] = True
 
     # The sorting algorithm: Loop over all places in sorted_line to be filled,
@@ -170,7 +170,7 @@ def sort_triangle_edges(t):
     num_iter = 0
 
     # Bookkeeping of already processed triangles. Not sure if this is needed.
-    is_ordered = np.zeros(nt, dtype=np.bool)
+    is_ordered = np.zeros(nt, dtype=bool)
     is_ordered[0] = 1
 
     while len(queue) > 0:

@@ -63,7 +63,7 @@ class configureNetworkGT(QgsProcessingAlgorithm):
                     is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
 
                 modules = ['cython','numpy','scipy','scikit-image','sympy']
-                moduleVersions = ['pip','pandas==0.25.1','meshio == 2.3.8','chart_studio','plotly>=4.11.0','networkx==2.5']
+                moduleVersions = ['pip','pandas','meshio == 2.3.8','chart_studio','plotly>=4.11.0','networkx==2.5']
 
                 if not is_admin:
                     feedback.reportError(QCoreApplication.translate('Warning',"Attempted to install necessary python modules without admin access. Certain 'Digitising' and 'Flow' tools may not work."))

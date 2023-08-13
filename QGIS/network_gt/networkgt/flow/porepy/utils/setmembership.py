@@ -116,7 +116,7 @@ def ismember_rows(a, b, sort=True):
         # large arrays, but as the alternative implementation is opaque, and
         # there has been some doubts on its reliability, this version is kept
         # as a safeguard.
-        ismem_a = np.zeros(num_a, dtype=np.bool)
+        ismem_a = np.zeros(num_a, dtype=bool)
         ind_of_a_in_b = np.empty(0)
         for i in range(num_a):
             if sa.ndim == 1:
@@ -183,7 +183,7 @@ def unique_columns_tol(mat, tol=1e-8, exponent=2):
     # If the current numpy version is older, an ugly hack is possible: Download
     # the file from the numpy repositories, and place it somewhere in
     # $PYHTONPATH, with the name 'numpy_113_unique'.
-    if issubclass(mat.dtype.type, np.integer) and tol < 0.5:
+    if issubclass(mat.dtype.type, integer) and tol < 0.5:
         # Obtain version of numpy that was loaded by the import in this module
         np_version = np.__version__.split(".")
         # If we are on numpy 2, or 1.13 or higher, we're good.
@@ -217,7 +217,7 @@ def unique_columns_tol(mat, tol=1e-8, exponent=2):
     (nd, l) = mat.shape
 
     # By default, no columns are kept
-    keep = np.zeros(l, dtype=np.bool)
+    keep = np.zeros(l, dtype=bool)
 
     # We will however keep the first point
     keep[0] = True

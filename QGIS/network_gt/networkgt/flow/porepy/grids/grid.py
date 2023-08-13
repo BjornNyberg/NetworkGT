@@ -645,7 +645,7 @@ class Grid(object):
         """ Tag faces on the boundary of the grid with boundary tag.
 
         """
-        zeros = np.zeros(self.num_faces, dtype=np.bool)
+        zeros = np.zeros(self.num_faces, dtype=bool)
         self.tags["domain_boundary_faces"] = zeros
         if self.dim > 0:  # by default no 0d grid at the boundary of the domain
             bd_faces = np.argwhere(
@@ -663,7 +663,7 @@ class Grid(object):
             "fracture_faces": "fracture_nodes",
             "tip_faces": "tip_nodes",
         }
-        zeros = np.zeros(self.num_nodes, dtype=np.bool)
+        zeros = np.zeros(self.num_nodes, dtype=bool)
 
         for face_tag, node_tag in mask.items():
             self.tags[node_tag] = zeros.copy()
@@ -829,7 +829,7 @@ class Grid(object):
             min_id = np.argmin(d)
             return min_id, np.sqrt(d[min_id])
 
-        ci = np.empty(p.shape[1], dtype=np.int)
+        ci = np.empty(p.shape[1], dtype=int)
         di = np.empty(p.shape[1])
         for i in range(p.shape[1]):
             ci[i], di[i] = min_dist(p[:, i].reshape((3, -1)))

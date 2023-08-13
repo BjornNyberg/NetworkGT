@@ -211,7 +211,7 @@ def polygons_by_polyhedron(polygons, polyhedron, tol=1e-8):
 
         # First, count the number of times a segment of the polygon is associated with
         # an intersection point
-        count_boundary_segment = np.zeros(num_vert, dtype=np.int)
+        count_boundary_segment = np.zeros(num_vert, dtype=int)
         for isect in seg_vert:
             # Only consider segment intersections, not interior (len==0), and vertexes
             if len(isect) > 0 and isect[1]:
@@ -241,13 +241,13 @@ def polygons_by_polyhedron(polygons, polyhedron, tol=1e-8):
         segments_interior_boundary = []
 
         # Check if individual vertexs are on the boundary
-        vertex_on_boundary = np.zeros(num_vert, np.bool)
+        vertex_on_boundary = np.zeros(num_vert, bool)
         for isect in seg_vert:
             if len(isect) > 0 and not isect[1]:
                 vertex_on_boundary[isect[0]] = 1
 
         # Storage of the intersections associated with each segment of the original polygon
-        isects_of_segment = np.zeros(num_vert, np.object)
+        isects_of_segment = np.zeros(num_vert, object)
         for i in range(num_vert):
             isects_of_segment[i] = []
 
@@ -289,7 +289,7 @@ def polygons_by_polyhedron(polygons, polyhedron, tol=1e-8):
             if len(isects_of_segment[seg_ind]) == 0:
                 continue
             # Index and coordinate of intersection points on this segment
-            loc_isect_ind = np.asarray(isects_of_segment[seg_ind], dtype=np.int).ravel()
+            loc_isect_ind = np.asarray(isects_of_segment[seg_ind], dtype=int).ravel()
             isect_coord = coord[:, loc_isect_ind]
 
             # Start and end of the full segment
@@ -329,7 +329,7 @@ def polygons_by_polyhedron(polygons, polyhedron, tol=1e-8):
                 [i for i in segments_interior_boundary]
             ).T
         else:
-            segments_interior_boundary = np.zeros((2, 0), dtype=np.int)
+            segments_interior_boundary = np.zeros((2, 0), dtype=int)
 
         # At this stage, we have identified all segments, possibly with duplicates.
         # Next task is to arrive at a unique representation of the segments.

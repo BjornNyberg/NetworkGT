@@ -25,6 +25,7 @@ class Percolation(QgsProcessingAlgorithm):
     TP = "Topology Parameters"
     CV = "CV"
     Output = 'Output'
+    Plot = 'Plot'
 
     def __init__(self):
         super().__init__()
@@ -69,11 +70,12 @@ class Percolation(QgsProcessingAlgorithm):
             self.Output,
             self.tr("Percolation"),
             QgsProcessing.TypeVectorPolygon, '',optional=True))
-
+        self.addParameter(QgsProcessingParameterBoolean(self.Plot,
+                    self.tr("Plot"),False))
 
     def processAlgorithm(self, parameters, context, feedback):
 
-        plot = True
+        plot = parameters[self.Plot]
 
         try:
             import plotly.graph_objs as go
@@ -172,7 +174,7 @@ class Percolation(QgsProcessingAlgorithm):
                     B22c30V = B22c30*(newB/curB)*(math.sqrt(CV**2+1))
 
                     if self.Output in parameters:
-                        rows.extend[B22,B22cR,B22cO,B22c30V,B22c60V]
+                        rows.extend([B22,B22cR,B22cO,B22c30V,B22c60V])
                     else:
                         rows = {idxs[0]:B22,idxs[1]:B22cR,idxs[2]:B22cO,idxs[3]:B22c30V,idxs[4]:B22c60V}
 
@@ -185,13 +187,18 @@ class Percolation(QgsProcessingAlgorithm):
                     a30.append(B22c30V)
                 else:
                     if self.Output in parameters:
-                        rows.extend[-1, -1, -1, -1, -1]
-                    rows = {idxs[0]:B22,idxs[1]:-1,idxs[2]:-1,idxs[3]:-1,idxs[4]:-1}
+                        rows.extend([-1, -1, -1, -1, -1])
+                    else:
+                        rows = {idxs[0]:-1,idxs[1]:-1,idxs[2]:-1,idxs[3]:-1,idxs[4]:-1}
             else:
                 if self.Output in parameters:
-                    rows.extend[0, 0, 0, 0, 0]
+                    rows = []
+                    for field in TP.fields():
+                        if field.name() not in new_fields:
+                            rows.append(feature[field.name()])
+                    rows.extend([0, 0, 0, 0, 0])
                 else:
-                    rows = {idxs[0]:B22,idxs[1]:0,idxs[2]:0,idxs[3]:0,idxs[4]:0}
+                    rows = {idxs[0]:0,idxs[1]:0,idxs[2]:0,idxs[3]:0,idxs[4]:0}
             if self.Output in parameters:
                 fet.setGeometry(feature.geometry())
                 fet.setAttributes(rows)

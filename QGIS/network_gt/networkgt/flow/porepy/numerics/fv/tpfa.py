@@ -85,9 +85,9 @@ class Tpfa(FVElliptic):
             matrix_dictionary[self.bound_pressure_face_matrix_key] = sps.csr_matrix([0])
             return None
         if faces is None:
-            is_not_active = np.zeros(g.num_faces, dtype=np.bool)
+            is_not_active = np.zeros(g.num_faces, dtype=bool)
         else:
-            is_active = np.zeros(g.num_faces, dtype=np.bool)
+            is_active = np.zeros(g.num_faces, dtype=bool)
             is_active[faces] = True
 
             is_not_active = np.logical_not(is_active)

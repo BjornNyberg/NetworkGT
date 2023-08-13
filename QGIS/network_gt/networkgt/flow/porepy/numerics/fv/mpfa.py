@@ -277,7 +277,7 @@ class Mpfa(FVElliptic):
 
             cn = g.cell_nodes()
 
-            face_covered = np.zeros(g.num_faces, dtype=np.bool)
+            face_covered = np.zeros(g.num_faces, dtype=bool)
 
             for p in range(part.max()):
                 # Cells in this partitioning
@@ -285,7 +285,7 @@ class Mpfa(FVElliptic):
                 # To discretize with as little overlap as possible, we use the
                 # keyword nodes to specify the update stencil. Find nodes of the
                 # local cells.
-                active_cells = np.zeros(g.num_cells, dtype=np.bool)
+                active_cells = np.zeros(g.num_cells, dtype=bool)
                 active_cells[cell_ind] = 1
                 active_nodes = np.squeeze(np.where((cn * active_cells) > 0))
 

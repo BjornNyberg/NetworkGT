@@ -587,7 +587,7 @@ class Biot(Mpsa):
         # general combinations of specified cells, nodes and faces.
         tmp = g.cell_faces.transpose()
         tmp.data = np.abs(tmp.data)
-        af_vec = np.zeros(g.num_faces, dtype=np.bool)
+        af_vec = np.zeros(g.num_faces, dtype=bool)
         af_vec[active_faces] = 1
         update_cell_ind = np.where(((tmp * af_vec) == tmp.sum(axis=1).A.T)[0])[0]
         eliminate_cells = np.setdiff1d(np.arange(g.num_cells), update_cell_ind)
@@ -1015,7 +1015,7 @@ class Biot(Mpsa):
         row, col = np.meshgrid(np.arange(cell_node_blocks.shape[1]), trace)
         # Adjust the columns to hit each sub-cell
         incr = np.cumsum(nd ** 2 * np.ones(cell_node_blocks.shape[1])) - nd ** 2
-        col += incr.astype("int32")
+        col += incr.astype("np.int32")
 
         # Integrate the trace over the sub-cell, that is, distribute the cell
         # volumes equally over the sub-cells

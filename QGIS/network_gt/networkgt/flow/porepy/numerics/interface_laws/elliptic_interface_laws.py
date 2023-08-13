@@ -254,7 +254,7 @@ class FluxPressureContinuity(RobinCoupling):
 
         # I got some problems with pointers when doing rhs_master = rhs_slave.copy()
         # so just reconstruct everything.
-        rhs_slave = np.empty(3, dtype=np.object)
+        rhs_slave = np.empty(3, dtype=object)
         rhs_slave[master_ind] = np.zeros_like(rhs_master[master_ind])
         rhs_slave[slave_ind] = np.zeros_like(rhs_master[slave_ind])
         rhs_slave[2] = np.zeros_like(rhs_master[2])

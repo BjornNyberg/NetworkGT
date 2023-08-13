@@ -74,7 +74,7 @@ class Field(object):
             np.dtype("bool"): vtk.VTK_CHAR,
             np.dtype("int64"): vtk.VTK_INT,
             np.dtype("float64"): vtk.VTK_DOUBLE,
-            np.dtype("int32"): vtk.VTK_INT,
+            np.dtype("np.int32"): vtk.VTK_INT,
         }
 
         return map_type[self.values.dtype]
@@ -436,11 +436,11 @@ class Exporter:
         self.gb.add_node_props(extra_fields.names())
         # fill the extra data
         for g, d in self.gb:
-            ones = np.ones(g.num_cells, dtype=np.int)
+            ones = np.ones(g.num_cells, dtype=int)
             d["grid_dim"] = g.dim * ones
-            d["cell_id"] = np.arange(g.num_cells, dtype=np.int)
+            d["cell_id"] = np.arange(g.num_cells, dtype=int)
             d["grid_node_number"] = d["node_number"] * ones
-            d["is_mortar"] = np.zeros(g.num_cells, dtype=np.bool)
+            d["is_mortar"] = np.zeros(g.num_cells, dtype=bool)
             d["mortar_side"] = int(pp.grids.mortar_grid.NONE_SIDE) * ones
 
         # collect the data and extra data in a single stack for each dimension
@@ -449,7 +449,7 @@ class Exporter:
             file_name = self._make_folder(self.folder_name, file_name)
             for field in fields:
                 grids = self.gb.get_grids(lambda g: g.dim == dim)
-                values = np.empty(grids.size, dtype=np.object)
+                values = np.empty(grids.size, dtype=object)
                 for i, g in enumerate(grids):
                     if field.name in data:
                         values[i] = self.gb._nodes[g][pp.STATE][field.name]
@@ -484,11 +484,11 @@ class Exporter:
             mg = d["mortar_grid"]
             mg_num_cells = 0
             for side, g in mg.side_grids.items():
-                ones = np.ones(g.num_cells, dtype=np.int)
+                ones = np.ones(g.num_cells, dtype=int)
                 d["grid_dim"][side] = g.dim * ones
-                d["is_mortar"][side] = ones.astype(np.bool)
+                d["is_mortar"][side] = ones.astype(bool)
                 d["mortar_side"][side] = int(side) * ones
-                d["cell_id"][side] = np.arange(g.num_cells, dtype=np.int) + mg_num_cells
+                d["cell_id"][side] = np.arange(g.num_cells, dtype=int) + mg_num_cells
                 mg_num_cells += g.num_cells
                 d["grid_edge_number"][side] = d["edge_number"] * ones
 
@@ -503,7 +503,7 @@ class Exporter:
             num_grids = np.sum([m.num_sides() for m in mgs])
 
             for field in extra_fields:
-                values = np.empty(num_grids, dtype=np.object)
+                values = np.empty(num_grids, dtype=object)
                 i = 0
                 for mg, edge in zip(mgs, edges):
                     for side, _ in mg.side_grids.items():
@@ -852,7 +852,7 @@ class Exporter:
 def _point_ind(
     cell_ptr, face_ptr, face_cells, nodes_faces, nodes, fc, normals, num_cell_nodes
 ):
-    cell_nodes = np.zeros(num_cell_nodes.sum(), dtype=np.int)
+    cell_nodes = np.zeros(num_cell_nodes.sum(), dtype=int)
     counter = 0
     for ci in range(cell_ptr.size - 1):
         loc_c = slice(cell_ptr[ci], cell_ptr[ci + 1])
@@ -912,7 +912,7 @@ if "numba" in sys.modules:
         """
         cell_nodes = np.zeros(num_cell_nodes.sum(), dtype=np.int32)
         counter = 0
-        fc.astype(np.float64)
+        fc.astype(float64)
         for ci in range(cell_ptr.size - 1):
             loc_c = slice(cell_ptr[ci], cell_ptr[ci + 1])
             for fi in faces_cells[loc_c]:
@@ -933,7 +933,7 @@ if "numba" in sys.modules:
                         normals[2, fi] * reference[0] - normals[0, fi] * reference[2],
                         normals[0, fi] * reference[1] - normals[1, fi] * reference[0],
                     ],
-                    dtype=np.float64,
+                    dtype=float64,
                 )
                 ##            # Cut-down version of cg.rot()
                 W = np.array(

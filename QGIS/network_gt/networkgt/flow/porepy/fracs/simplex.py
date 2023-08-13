@@ -212,7 +212,7 @@ def line_grid_embedded(points, edges, domain, **kwargs):
     logger.info("Create 1d mesh embedded")
 
     # Unified description of points and lines for domain, and fractures
-    constraints = np.empty(0, dtype=np.int)
+    constraints = np.empty(0, dtype=int)
     pts_all, lines, domain_pts = _merge_domain_fracs_2d(
         domain, points, edges, constraints
     )
@@ -277,7 +277,7 @@ def triangle_grid_from_gmsh(file_name, constraints=None, **kwargs):
     """
 
     if constraints is None:
-        constraints = np.empty(0, dtype=np.int)
+        constraints = np.empty(0, dtype=int)
 
     start_time = time.time()
 
@@ -351,7 +351,7 @@ def line_grid_from_gmsh(file_name, constraints=None, **kwargs):
     """
 
     if constraints is None:
-        constraints = np.empty(0, dtype=np.int)
+        constraints = np.empty(0, dtype=int)
 
     start_time = time.time()
 
@@ -540,7 +540,7 @@ def _merge_domain_fracs_2d(dom, frac_p, frac_l, constraints):
     # Adjust index of fracture points to account for the compartment points
     dom_l[:2] += frac_p.shape[1]
 
-    l = np.hstack((frac_l, dom_l)).astype(np.int)
+    l = np.hstack((frac_l, dom_l)).astype(int)
 
     # Add a second tag as an identifier of each line.
     l = np.vstack((l, np.arange(l.shape[1])))

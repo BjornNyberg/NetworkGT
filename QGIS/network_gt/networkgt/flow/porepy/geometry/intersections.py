@@ -59,10 +59,10 @@ def segments_2d(start_1, end_1, start_2, end_2, tol=1e-8):
         ValueError if the start and endpoints of a line are the same.
 
     """
-    start_1 = np.asarray(start_1).astype(np.float)
-    end_1 = np.asarray(end_1).astype(np.float)
-    start_2 = np.asarray(start_2).astype(np.float)
-    end_2 = np.asarray(end_2).astype(np.float)
+    start_1 = np.asarray(start_1).astype(float)
+    end_1 = np.asarray(end_1).astype(float)
+    start_2 = np.asarray(start_2).astype(float)
+    end_2 = np.asarray(end_2).astype(float)
 
     # Vectors along first and second line
     d_1 = end_1 - start_1
@@ -185,10 +185,10 @@ def segments_3d(start_1, end_1, start_2, end_2, tol=1e-8):
     """
 
     # Convert input to numpy if necessary
-    start_1 = np.asarray(start_1).astype(np.float).ravel()
-    end_1 = np.asarray(end_1).astype(np.float).ravel()
-    start_2 = np.asarray(start_2).astype(np.float).ravel()
-    end_2 = np.asarray(end_2).astype(np.float).ravel()
+    start_1 = np.asarray(start_1).astype(float).ravel()
+    end_1 = np.asarray(end_1).astype(float).ravel()
+    start_2 = np.asarray(start_2).astype(float).ravel()
+    end_2 = np.asarray(end_2).astype(float).ravel()
 
     # Short hand for component of start and end points, as well as vectors
     # along lines.
@@ -470,7 +470,7 @@ def polygons_3d(polys, tol=1e-8):
     num_polys = len(polys)
 
     # Storage array for storing the index of the intersection points for each polygon
-    isect_pt = np.empty(num_polys, dtype=np.object)
+    isect_pt = np.empty(num_polys, dtype=object)
     # Storage for whehter an intersection is on the boundary of a polygon
     is_bound_isect = np.empty_like(isect_pt)
     # Storage for which segment or vertex of a polygon is intersected
@@ -1221,9 +1221,9 @@ def split_intersecting_segments_2d(p, e, tol=1e-4):
 
     # Data structure for storage of intersection points. For each fracture,
     # we have an array that will contain the index of the intersections.
-    isect_pt = np.empty(num_lines, dtype=np.object)
+    isect_pt = np.empty(num_lines, dtype=object)
     for i in range(isect_pt.size):
-        isect_pt[i] = np.empty(0, dtype=np.int)
+        isect_pt[i] = np.empty(0, dtype=int)
 
     # Array of new points, found in the intersection of old ones.
     new_pts = []
@@ -1391,11 +1391,11 @@ def split_intersecting_segments_2d(p, e, tol=1e-4):
         new_edge[:2] = np.sort(new_edge[:2], axis=0)
         # Uniquify.
         _, edge_map, _ = pp.utils.setmembership.unique_columns_tol(
-            new_edge[:2].astype(np.int), tol
+            new_edge[:2].astype(int), tol
         )
         new_edge = new_edge[:, edge_map]
 
-        return unique_all_pt, new_edge.astype(np.int)
+        return unique_all_pt, new_edge.astype(int)
 
 
 def _axis_aligned_bounding_box_2d(p, e):

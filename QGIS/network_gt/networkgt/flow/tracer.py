@@ -81,7 +81,7 @@ class Tracer(object):
             b = block_b[discr_name]
 
         M_A = M + A
-        tr = np.zeros(b.size, dtype=np.float)
+        tr = np.zeros(b.size, dtype=float)
 
         for time_step in np.arange(self.data["num_steps"]):
             # solve the problem

@@ -855,7 +855,7 @@ class Mpsa:
         is_neu_nd = (
             bound_exclusion.keep_neumann(bound.is_neu.ravel("C"), transform=False)
             .ravel("F")
-            .astype(np.bool)
+            .astype(bool)
         )
 
         neu_ind = np.argsort(subfno_neu)
@@ -869,7 +869,7 @@ class Mpsa:
         is_rob_nd = (
             bound_exclusion.keep_robin(bound.is_rob.ravel("C"), transform=False)
             .ravel("F")
-            .astype(np.bool)
+            .astype(bool)
         )
 
         rob_ind = np.argsort(subfno_rob)
@@ -885,7 +885,7 @@ class Mpsa:
                 bound.is_dir.ravel("C"), transform=False
             )
             .ravel("F")
-            .astype(np.bool)
+            .astype(bool)
         )
 
         dir_ind = np.argsort(subfno_dir)
@@ -1093,7 +1093,7 @@ class Mpsa:
     ) -> Generator[Any, None, None]:
         peak_mem: int = self._estimate_peak_memory_mpsa(active_grid)
 
-        num_part: int = np.ceil(peak_mem / max_memory).astype(np.int)
+        num_part: int = np.ceil(peak_mem / max_memory).astype(int)
 
         # Let partitioning module apply the best available method
         part: np.ndarray = pp.partition.partition(active_grid, num_part)
@@ -1113,7 +1113,7 @@ class Mpsa:
             # To discretize with as little overlap as possible, we use the
             # keyword nodes to specify the update stencil. Find nodes of the
             # local cells.
-            cells_in_partition_boolean = np.zeros(active_grid.num_cells, dtype=np.bool)
+            cells_in_partition_boolean = np.zeros(active_grid.num_cells, dtype=bool)
             cells_in_partition_boolean[cells_in_partition] = 1
 
             nodes_in_partition: np.ndarray = np.squeeze(
@@ -1584,7 +1584,7 @@ class Mpsa:
         num_eqs = csym.shape[0] / nd
         ind_single = np.tile(subcell_topology.unique_subfno, (nd, 1))
         increments = np.arange(nd) * num_eqs
-        ind_all = np.reshape(ind_single + increments[:, np.newaxis], -1).astype(np.int)
+        ind_all = np.reshape(ind_single + increments[:, np.newaxis], -1).astype(int)
 
         # Unique part of symmetric and asymmetric products
         hook_sym = csym[ind_all, ::]

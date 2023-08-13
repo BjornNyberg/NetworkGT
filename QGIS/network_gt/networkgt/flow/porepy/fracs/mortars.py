@@ -261,8 +261,8 @@ def match_grids_1d(new_1d, old_1d, tol):
     intersect = pp.intersections.line_tesselation(p1, p2, lines1, lines2)
 
     num = len(intersect)
-    new_g_ind = np.zeros(num, dtype=np.int)
-    old_g_ind = np.zeros(num, dtype=np.int)
+    new_g_ind = np.zeros(num, dtype=int)
+    old_g_ind = np.zeros(num, dtype=int)
     weights = np.zeros(num)
 
     for ind, i in enumerate(intersect):
@@ -325,8 +325,8 @@ def match_grids_2d(new_g, old_g, tol):
     )
 
     num = len(isect)
-    new_g_ind = np.zeros(num, dtype=np.int)
-    old_g_ind = np.zeros(num, dtype=np.int)
+    new_g_ind = np.zeros(num, dtype=int)
+    old_g_ind = np.zeros(num, dtype=int)
     weights = np.zeros(num)
 
     for ind, i in enumerate(isect):
@@ -550,7 +550,7 @@ def _match_grids_along_line_from_geometry(mg, g_new, g_old, tol):
     faces_by_hit = np.where(np.all(fn_in_hit, axis=0))[0]
     faces_on_boundary_new = np.where(g_new.tags["fracture_faces"].ravel())[0]
     # Only consider faces both in hit, and that are boundary
-    faces_on_boundary_new = np.intersect1d(faces_by_hit, faces_on_boundary_new)
+    faces_on_boundary_new = intersect1d(faces_by_hit, faces_on_boundary_new)
 
     # Cells along the segment, from the new grid
     bound_cells_new = cells_from_faces(g_new, faces_on_boundary_new)

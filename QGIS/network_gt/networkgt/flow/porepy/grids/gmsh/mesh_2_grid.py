@@ -124,7 +124,7 @@ def create_2d_grids(pts, cells, **kwargs):
         # create all the extra tags for the grids, by default they're false
         for tag in np.unique(cell_info["line"]["gmsh:physical"]):
             tag_name = phys_names[tag].lower() + "_faces"
-            g_2d.tags[tag_name] = np.zeros(g_2d.num_faces, dtype=np.bool)
+            g_2d.tags[tag_name] = np.zeros(g_2d.num_faces, dtype=bool)
 
         # since there is not a cell-face relation from gmsh but only a cell-node
         # relation we need to recover the corresponding face.
@@ -136,7 +136,7 @@ def create_2d_grids(pts, cells, **kwargs):
             # check where is the second node, same approach as before
             second = (triangles == cells["line"][tag_id, 1]).any(axis=0)
             # select which are the cells that have this edge
-            tria = np.logical_and(first, second).astype(np.int)
+            tria = np.logical_and(first, second).astype(int)
             # with the cell_faces map we get the faces associated to
             # the selected triangles
             face = np.abs(g_2d.cell_faces).dot(tria)
@@ -153,7 +153,7 @@ def create_2d_grids(pts, cells, **kwargs):
                     # is the first otherwise it is the other.
                     face_id = np.where(face)[0]
 
-                    first_face = np.zeros(face.size, dtype=np.bool)
+                    first_face = np.zeros(face.size, dtype=bool)
                     first_face[face_id[0]] = True
 
                     nodes = g_2d.face_nodes.dot(first_face)
@@ -188,7 +188,7 @@ def create_1d_grids(
 ):
 
     if constraints is None:
-        constraints = np.empty(0, dtype=np.int)
+        constraints = np.empty(0, dtype=int)
     # Recover lines
     # There will be up to three types of physical lines: intersections (between
     # fractures), fracture tips, and auxiliary lines (to be disregarded)
